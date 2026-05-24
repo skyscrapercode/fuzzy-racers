@@ -74,10 +74,12 @@
                 <h2 class="modal-title">Full AI Rule Log</h2>
                 <button class="modal-close" type="button" data-close>✕</button>
             </div>
-            <div class="modal-section">
-                <p>Every fuzzy rule the AI evaluated this race, ranked by how many times it fired.</p>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <p>Every fuzzy rule the AI evaluated this race, ranked by how many times it fired.</p>
+                </div>
+                <div class="modal-section" id="fullRuleList"></div>
             </div>
-            <div class="modal-section" id="fullRuleList"></div>
         </div>
     </div>
 
@@ -88,6 +90,7 @@
                 <h2 class="modal-title">How Fuzzy Logic Works</h2>
                 <button class="modal-close" type="button" data-close>✕</button>
             </div>
+            <div class="modal-body">
             <section class="modal-section">
                 <h3>What is it?</h3>
                 <p>Fuzzy logic is a way of reasoning with <strong>degrees of truth</strong> rather than hard yes/no answers. A fact like "the player is close" can be <em>0.7 true</em> instead of just true or false, so multiple soft conditions blend together into a smooth decision.</p>
@@ -115,6 +118,7 @@
                     <li><strong>Braking under risk</strong> — critical-health AI brakes earlier and softens.</li>
                 </ul>
             </section>
+            </div>
         </div>
     </div>
 
