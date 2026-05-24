@@ -82,7 +82,9 @@ nav a {
     height: 100vh;
     padding: 0;
     display: grid;
-    grid-template-rows: 1fr auto 1fr;
+    /* Title (drawn on canvas) gets the top band; .menu-center sits in the
+     * vertical middle of the viewport; footer sits at the bottom. */
+    grid-template-rows: minmax(28vh, auto) 1fr auto;
     justify-items: center;
     align-items: center;
     pointer-events: none;
@@ -92,11 +94,18 @@ nav a {
     pointer-events: auto;
 }
 
-.menu-title-area {
+.menu-top-spacer {
     width: 100%;
-    text-align: center;
-    align-self: end;
-    padding-top: 4vh;
+    /* Reserved space — title is painted on the background canvas. */
+}
+
+.menu-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    padding-bottom: 4vh;
 }
 
 .menu-tagline {
@@ -104,8 +113,8 @@ nav a {
     font-size: clamp(0.9rem, 1.1vw, 1.1rem);
     text-transform: uppercase;
     letter-spacing: 0.5em;
-    margin-top: 0.4em;
     text-shadow: 0 0 8px rgba(0, 234, 255, 0.4);
+    text-align: center;
 }
 
 .menu-buttons {
@@ -113,7 +122,6 @@ nav a {
     flex-direction: column;
     gap: 1rem;
     width: min(420px, 80vw);
-    padding: 2rem 0;
 }
 
 .btn {
@@ -139,18 +147,27 @@ nav a {
     overflow: hidden;
     isolation: isolate;
     transition: transform 0.15s ease, box-shadow 0.25s ease, letter-spacing 0.25s ease;
+    /* Default ambient glow so the button outline is clearly visible at rest. */
+    box-shadow:
+        0 0 0 1px rgba(0, 234, 255, 0.25),
+        0 0 18px rgba(0, 234, 255, 0.35),
+        0 0 38px rgba(255, 43, 214, 0.18),
+        inset 0 0 18px rgba(0, 234, 255, 0.08);
 }
 
-/* Animated gradient border (rendered via ::before mask) */
+/* Animated gradient border (rendered via ::before mask).
+ * Inset of -3px makes the border ring thicker and more obviously colorful. */
 .btn::before {
     content: '';
     position: absolute;
-    inset: -2px;
+    inset: -3px;
     border-radius: inherit;
     background: var(--grad);
     background-size: 300% 100%;
     animation: borderFlow 5s linear infinite;
     z-index: -2;
+    /* Soft drop shadow so the ring itself emits glow into the surrounding area. */
+    filter: drop-shadow(0 0 8px rgba(0, 234, 255, 0.45));
 }
 
 .btn::after {
@@ -165,11 +182,16 @@ nav a {
 .btn:hover {
     transform: translateY(-2px);
     letter-spacing: 0.24em;
-    box-shadow: var(--glow-cyan);
+    box-shadow:
+        0 0 0 1px var(--neon-cyan),
+        0 0 28px rgba(0, 234, 255, 0.7),
+        0 0 60px rgba(255, 43, 214, 0.35),
+        inset 0 0 22px rgba(0, 234, 255, 0.18);
 }
 
 .btn:hover::before {
     animation-duration: 1.5s;
+    filter: drop-shadow(0 0 14px rgba(0, 234, 255, 0.7));
 }
 
 .btn:active {
@@ -182,7 +204,6 @@ nav a {
 }
 
 .menu-footer {
-    align-self: end;
     padding-bottom: 1.5rem;
     color: var(--text-mute);
     font-size: 0.8rem;

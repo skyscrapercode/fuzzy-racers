@@ -10,28 +10,29 @@
     <canvas id="bgCanvas"></canvas>
 
     <main id="menu">
-        <div class="menu-title-area">
-            <!-- Title is drawn on the background canvas for the neon glow effect -->
-            <div class="menu-tagline">Fuzzy Logic Combat Racing</div>
-        </div>
+        <!-- Title is drawn on the background canvas; this empty top row keeps the layout grid aligned. -->
+        <div class="menu-top-spacer"></div>
 
-        <div class="menu-buttons">
-            <a class="btn" href="garage.html">
-                <span class="btn-icon">🏁</span>
-                <span>Start Race</span>
-            </a>
-            <button class="btn" type="button" data-modal="howto">
-                <span class="btn-icon">🏆</span>
-                <span>How to Play</span>
-            </button>
-            <button class="btn" type="button" data-modal="settings">
-                <span class="btn-icon">⚙️</span>
-                <span>Settings</span>
-            </button>
-            <button class="btn" type="button" data-modal="fuzzy">
-                <span class="btn-icon">🧠</span>
-                <span>How Fuzzy Logic Works</span>
-            </button>
+        <div class="menu-center">
+            <div class="menu-tagline">Fuzzy Logic Combat Racing</div>
+            <div class="menu-buttons">
+                <a class="btn" href="garage.html">
+                    <span class="btn-icon">🏁</span>
+                    <span>Start Race</span>
+                </a>
+                <button class="btn" type="button" data-modal="howto">
+                    <span class="btn-icon">🏆</span>
+                    <span>How to Play</span>
+                </button>
+                <button class="btn" type="button" data-modal="settings">
+                    <span class="btn-icon">⚙️</span>
+                    <span>Settings</span>
+                </button>
+                <button class="btn" type="button" data-modal="fuzzy">
+                    <span class="btn-icon">🧠</span>
+                    <span>How Fuzzy Logic Works</span>
+                </button>
+            </div>
         </div>
 
         <div class="menu-footer">v0.1 · Built with Canvas</div>
@@ -248,11 +249,12 @@
         let track = { cx: 0, cy: 0, rx: 0, ry: 0 };
 
         function buildTrack() {
-            // Oval centered roughly in the lower 60% of the screen
+            // Oval positioned in the lower half of the screen so the title sits
+            // cleanly above it with breathing room.
             track.cx = W * 0.5;
-            track.cy = H * 0.62;
-            track.rx = Math.min(W * 0.42, 700);
-            track.ry = Math.min(H * 0.28, 260);
+            track.cy = H * 0.68;
+            track.rx = Math.min(W * 0.44, 760);
+            track.ry = Math.min(H * 0.26, 260);
         }
 
         // Position on track: 0..1 → x,y,angle
@@ -402,10 +404,12 @@
             titlePulse += 0.04;
             const pulse = 0.5 + 0.5 * Math.sin(titlePulse);
 
+            // Title sits in the upper portion of the screen, comfortably above
+            // the animated track (which is centered around y = H * 0.68).
             const cx = W * 0.5;
-            const cy = H * 0.28;
+            const cy = H * 0.18;
 
-            const size = Math.min(W * 0.11, 132);
+            const size = Math.min(W * 0.12, 148);
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -437,95 +441,6 @@
             ctx.restore();
         }
 
-        // ---------- Podium with trophies ----------
-        function drawPodium() {
-            const baseY = H * 0.92;
-            const cx = W * 0.5;
-            const blockW = Math.min(W * 0.08, 110);
-            const gap = 4;
-
-            // Block heights: 2nd, 1st, 3rd
-            const h1 = Math.min(H * 0.22, 160);
-            const h2 = h1 * 0.72;
-            const h3 = h1 * 0.55;
-
-            const blocks = [
-                { x: cx - blockW - gap - blockW / 2, h: h2, label: '2', color: '#9aa3c7' },
-                { x: cx - blockW / 2,                h: h1, label: '1', color: '#ffd400' },
-                { x: cx + blockW + gap - blockW / 2, h: h3, label: '3', color: '#cd7f32' }
-            ];
-
-            ctx.save();
-            for (const b of blocks) {
-                // Block shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(b.x + 4, baseY - b.h + 4, blockW, b.h);
-                // Block face
-                const grad = ctx.createLinearGradient(0, baseY - b.h, 0, baseY);
-                grad.addColorStop(0, '#1c2138');
-                grad.addColorStop(1, '#0b0e1a');
-                ctx.fillStyle = grad;
-                ctx.fillRect(b.x, baseY - b.h, blockW, b.h);
-                // Top edge accent
-                ctx.fillStyle = b.color;
-                ctx.shadowColor = b.color;
-                ctx.shadowBlur = settings.quality === 'high' ? 10 : 0;
-                ctx.fillRect(b.x, baseY - b.h, blockW, 3);
-                ctx.shadowBlur = 0;
-                // Rank number
-                ctx.fillStyle = b.color;
-                ctx.font = '800 28px "Segoe UI", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(b.label, b.x + blockW / 2, baseY - b.h / 2 + 4);
-
-                // Trophy on top
-                drawTrophy(b.x + blockW / 2, baseY - b.h - 6, b.color);
-            }
-            ctx.restore();
-        }
-
-        function drawTrophy(cx, baseY, color) {
-            ctx.save();
-            ctx.shadowColor = color;
-            ctx.shadowBlur = settings.quality === 'high' ? 16 : 0;
-
-            // Cup (bowl)
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.moveTo(cx - 14, baseY - 30);
-            ctx.quadraticCurveTo(cx - 14, baseY - 8, cx, baseY - 6);
-            ctx.quadraticCurveTo(cx + 14, baseY - 8, cx + 14, baseY - 30);
-            ctx.closePath();
-            ctx.fill();
-
-            // Handles
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(cx - 14, baseY - 22, 5, Math.PI * 0.5, Math.PI * 1.5);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(cx + 14, baseY - 22, 5, Math.PI * 1.5, Math.PI * 0.5);
-            ctx.stroke();
-
-            // Stem
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = color;
-            ctx.fillRect(cx - 3, baseY - 6, 6, 4);
-            // Base
-            ctx.fillRect(cx - 9, baseY - 2, 18, 4);
-
-            // Highlight on cup
-            ctx.globalAlpha = 0.5;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.ellipse(cx - 5, baseY - 22, 2, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.restore();
-        }
-
         // ---------- Main loop ----------
         let dashOffset = 0;
         let last = performance.now();
@@ -550,7 +465,6 @@
 
             drawTrack();
             drawCars(dt);
-            drawPodium();
             drawParticles(dt);
             drawTitle();
 
