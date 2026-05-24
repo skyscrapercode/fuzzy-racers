@@ -195,8 +195,8 @@ nav a {
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(2, 3, 8, 0.78);
-    backdrop-filter: blur(6px);
+    background: rgba(2, 3, 8, 0.88);
+    backdrop-filter: blur(8px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -211,7 +211,10 @@ nav a {
 
 .modal-panel {
     position: relative;
-    background: var(--panel);
+    /* Opaque (not the translucent --panel) so bright elements on the page
+     * behind the modal — gradient borders, the menu canvas — don't bleed
+     * through the panel and look like overflowing content. */
+    background: #0c0e1a;
     border: 1px solid var(--panel-border);
     border-radius: var(--radius);
     width: min(720px, 100%);
