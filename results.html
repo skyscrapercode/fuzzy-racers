@@ -46,7 +46,7 @@
             </div>
             <div class="fuzzy-right">
                 <h3 class="fuzzy-sub">AI Output Distribution</h3>
-                <canvas id="pieChart" width="280" height="280"></canvas>
+                <canvas id="pieChart"></canvas>
                 <div class="pie-legend" id="pieLegend"></div>
             </div>
         </section>
@@ -233,18 +233,24 @@
         }
 
         // ---------- Pie chart of AI output distribution ----------
+        // Re-fit a few times in the first 500 ms because the panel grid
+        // doesn't settle to its final size on the very first frame.
         drawPieChart();
+        for (const delay of [50, 200, 500]) setTimeout(drawPieChart, delay);
+        window.addEventListener('resize', drawPieChart);
 
         function drawPieChart() {
             const canvas = document.getElementById('pieChart');
             const ctx = canvas.getContext('2d');
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            const W = canvas.width / dpr, H = canvas.height / dpr;
-            canvas.width = canvas.width * dpr;
-            canvas.height = canvas.height * dpr;
+            // CSS size is the source of truth (set by the stylesheet);
+            // the internal pixel buffer is CSS × dpr for crisp rendering.
+            const rect = canvas.getBoundingClientRect();
+            const W = Math.max(200, Math.round(rect.width));
+            const H = Math.max(200, Math.round(rect.height));
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            canvas.style.width = W + 'px';
-            canvas.style.height = H + 'px';
             ctx.clearRect(0, 0, W, H);
 
             if (!fuzzy || fuzzy.ticks === 0) {
