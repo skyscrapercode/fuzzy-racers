@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuzzy Racers</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+
+    <main id="menu">
+        <div class="menu-title-area">
+            <!-- Title is drawn on the background canvas for the neon glow effect -->
+            <div class="menu-tagline">Fuzzy Logic Combat Racing</div>
+        </div>
+
+        <div class="menu-buttons">
+            <a class="btn" href="garage.html">
+                <span class="btn-icon">🏁</span>
+                <span>Start Race</span>
+            </a>
+            <button class="btn" type="button" data-modal="howto">
+                <span class="btn-icon">🏆</span>
+                <span>How to Play</span>
+            </button>
+            <button class="btn" type="button" data-modal="settings">
+                <span class="btn-icon">⚙️</span>
+                <span>Settings</span>
+            </button>
+            <button class="btn" type="button" data-modal="fuzzy">
+                <span class="btn-icon">🧠</span>
+                <span>How Fuzzy Logic Works</span>
+            </button>
+        </div>
+
+        <div class="menu-footer">v0.1 · Built with Canvas</div>
+    </main>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div class="modal" id="modal-howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title" id="howto-title">How to Play</h2>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+
+            <section class="modal-section">
+                <h3>Controls</h3>
+                <ul>
+                    <li><span class="key">▲</span> Accelerate</li>
+                    <li><span class="key">▼</span> Brake / Reverse</li>
+                    <li><span class="key">◀</span> <span class="key">▶</span> Steer left / right</li>
+                    <li><span class="key">Space</span> Use powerup</li>
+                    <li><span class="key">Esc</span> Pause race</li>
+                </ul>
+            </section>
+
+            <section class="modal-section">
+                <h3>Powerups</h3>
+                <ul>
+                    <li><strong>Boost</strong> — Temporary speed surge. Best used on straightaways.</li>
+                    <li><strong>Shield</strong> — Absorbs the next hit; blocks missiles and oil slicks.</li>
+                    <li><strong>Missile</strong> — Homing projectile that locks onto the car ahead.</li>
+                    <li><strong>Oil Slick</strong> — Drops behind your car; cars that hit it lose grip.</li>
+                </ul>
+            </section>
+
+            <section class="modal-section">
+                <h3>Fuzzy AI Difficulty</h3>
+                <p>Opponents use a fuzzy logic controller that weighs distance to the racing line, gap to nearby cars, and powerup risk. Difficulty tunes how aggressively those rules fire.</p>
+                <ul>
+                    <li><strong>Rookie</strong> — Wide cornering, hesitant with powerups, makes mistakes.</li>
+                    <li><strong>Pro</strong> — Tight lines, reactive to traffic, holds powerups for good moments.</li>
+                    <li><strong>Ace</strong> — Aggressive overtakes, opportunistic missile timing, near-perfect lines.</li>
+                </ul>
+            </section>
+
+            <section class="modal-section">
+                <h3>Garage & Customization</h3>
+                <p>Pick a chassis in the Garage, then tune <strong>top speed</strong>, <strong>acceleration</strong>, <strong>handling</strong>, and <strong>armor</strong>. Stats are budgeted — bumping one trims another. Paint colors are pure flex.</p>
+            </section>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title" id="settings-title">Settings</h2>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">Master Volume</div>
+                    <div class="setting-hint">Engine, tire screeches, powerup SFX</div>
+                </div>
+                <div class="toggle on" id="toggle-volume" role="switch" aria-checked="true" tabindex="0"></div>
+            </div>
+
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">Visual Quality</div>
+                    <div class="setting-hint">Low disables particles and glow for performance</div>
+                </div>
+                <div class="segmented" id="seg-quality">
+                    <button type="button" data-quality="low">Low</button>
+                    <button type="button" data-quality="high" class="active">High</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW FUZZY LOGIC WORKS MODAL -->
+    <div class="modal" id="modal-fuzzy" role="dialog" aria-modal="true" aria-labelledby="fuzzy-title">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title" id="fuzzy-title">How Fuzzy Logic Works</h2>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+
+            <section class="modal-section">
+                <h3>What is it?</h3>
+                <p>Fuzzy logic is a way of reasoning with <strong>degrees of truth</strong> rather than hard yes/no answers. A fact like "the player is close" can be <em>0.7 true</em> instead of just true or false, so multiple soft conditions can blend together into a smooth decision.</p>
+            </section>
+
+            <section class="modal-section">
+                <h3>Why use it for racing AI?</h3>
+                <p>Race telemetry is continuous and messy — distance, speed, cornering, health, gap. A traditional if/else AI either explodes with edge cases or jerks between behaviors at hard thresholds. A fuzzy controller weighs every signal at once and produces a <strong>smooth, defensible action</strong> — exactly what you want from a believable opponent.</p>
+            </section>
+
+            <section class="modal-section">
+                <h3>The 3-step pipeline</h3>
+                <div class="fuzzy-diagram" aria-label="Fuzzification, Rule Evaluation, Defuzzification">
+                    <div class="fz-step s1">
+                        <div class="fz-num">STEP 1</div>
+                        <div class="fz-name">Fuzzification</div>
+                        <div class="fz-text">Raw race telemetry (distance px, speed px/s, health HP…) is converted into degrees of membership in fuzzy sets like <em>very_close</em>, <em>fast</em>, <em>critical</em>.</div>
+                    </div>
+                    <div class="fz-arrow">▸</div>
+                    <div class="fz-step s2">
+                        <div class="fz-num">STEP 2</div>
+                        <div class="fz-name">Rule Evaluation</div>
+                        <div class="fz-text">33 rules of the form <em>IF … THEN …</em> fire in parallel. Each rule's strength is the min() of its conditions (Mamdani AND). Multiple rules can fire on the same output, and the activations are aggregated by max().</div>
+                    </div>
+                    <div class="fz-arrow">▸</div>
+                    <div class="fz-step s3">
+                        <div class="fz-num">STEP 3</div>
+                        <div class="fz-name">Defuzzification</div>
+                        <div class="fz-text">The aggregate output membership curve is collapsed to a single crisp number via the <em>centroid</em> method. That number becomes the AI's throttle / brake / steering command for this tick.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="modal-section">
+                <h3>What in this game is fuzzy?</h3>
+                <ul class="fz-bullets">
+                    <li><strong>Speed control</strong> — throttle and brake are chosen by corner sharpness and distance to the player, not hard thresholds.</li>
+                    <li><strong>Powerup timing</strong> — when to fire a held powerup is computed from gap, health, and "powerup ready" simultaneously.</li>
+                    <li><strong>Aggression</strong> — the AI's overall posture (defensive vs. attacking) is a fuzzy blend of gap, health and proximity.</li>
+                    <li><strong>Braking under risk</strong> — at critical health the AI brakes earlier and softens aggression even on straight track.</li>
+                </ul>
+                <p style="margin-top: 0.6rem;">Press <span class="key">F</span> during a race to open the in-race fuzzy inspector and watch the engine think live.</p>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/state.js"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        // ---------- Settings (persisted via state.js when wired up) ----------
+        const settings = {
+            volume: true,
+            quality: 'high'
+        };
+
+        // ---------- Modal handling ----------
+        const modals = document.querySelectorAll('.modal');
+        function openModal(name) {
+            const m = document.getElementById('modal-' + name);
+            if (m) m.classList.add('open');
+        }
+        function closeModals() {
+            modals.forEach(m => m.classList.remove('open'));
+        }
+        document.querySelectorAll('[data-modal]').forEach(btn => {
+            btn.addEventListener('click', () => openModal(btn.dataset.modal));
+        });
+        document.querySelectorAll('[data-close]').forEach(btn => {
+            btn.addEventListener('click', closeModals);
+        });
+        modals.forEach(m => {
+            m.addEventListener('click', e => {
+                if (e.target === m) closeModals();
+            });
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModals();
+        });
+
+        // Volume toggle
+        const volToggle = document.getElementById('toggle-volume');
+        volToggle.addEventListener('click', () => {
+            settings.volume = !settings.volume;
+            volToggle.classList.toggle('on', settings.volume);
+            volToggle.setAttribute('aria-checked', String(settings.volume));
+        });
+
+        // Quality segmented
+        document.querySelectorAll('#seg-quality button').forEach(b => {
+            b.addEventListener('click', () => {
+                document.querySelectorAll('#seg-quality button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                settings.quality = b.dataset.quality;
+            });
+        });
+
+        // ---------- Canvas: animated background ----------
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let W = 0, H = 0, dpr = 1;
+
+        function resize() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            buildTrack();
+        }
+        window.addEventListener('resize', resize);
+
+        // ---------- Track (parametric oval loop) ----------
+        // Track is defined by a center path; we sample points along it and draw
+        // a thick stroke as the road, plus dashed center line.
+        let track = { cx: 0, cy: 0, rx: 0, ry: 0 };
+
+        function buildTrack() {
+            // Oval centered roughly in the lower 60% of the screen
+            track.cx = W * 0.5;
+            track.cy = H * 0.62;
+            track.rx = Math.min(W * 0.42, 700);
+            track.ry = Math.min(H * 0.28, 260);
+        }
+
+        // Position on track: 0..1 → x,y,angle
+        function trackPoint(t) {
+            const a = t * Math.PI * 2;
+            const x = track.cx + Math.cos(a) * track.rx;
+            const y = track.cy + Math.sin(a) * track.ry;
+            // Tangent angle
+            const tx = -Math.sin(a) * track.rx;
+            const ty = Math.cos(a) * track.ry;
+            const ang = Math.atan2(ty, tx);
+            return { x, y, ang };
+        }
+
+        function drawTrack() {
+            // Outer asphalt
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1b1f2c';
+            ctx.lineWidth = 86;
+            ctx.beginPath();
+            for (let i = 0; i <= 120; i++) {
+                const p = trackPoint(i / 120);
+                if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+
+            // Road surface
+            ctx.strokeStyle = '#262b40';
+            ctx.lineWidth = 78;
+            ctx.stroke();
+
+            // Inner edge highlight
+            ctx.strokeStyle = 'rgba(0, 234, 255, 0.05)';
+            ctx.lineWidth = 78;
+            ctx.stroke();
+
+            // Dashed center line
+            ctx.setLineDash([18, 22]);
+            ctx.lineDashOffset = -dashOffset;
+            ctx.strokeStyle = 'rgba(255, 212, 0, 0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i <= 120; i++) {
+                const p = trackPoint(i / 120);
+                if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // ---------- Cars zooming around ----------
+        const carColors = ['#00eaff', '#ff2bd6', '#ffd400', '#39ff7a', '#ff3355', '#a479ff'];
+        const cars = [];
+        function spawnCars(n) {
+            cars.length = 0;
+            for (let i = 0; i < n; i++) {
+                cars.push({
+                    t: i / n,
+                    speed: 0.06 + Math.random() * 0.04, // laps per second
+                    color: carColors[i % carColors.length],
+                    lane: (i % 2 === 0 ? -1 : 1) * 8
+                });
+            }
+        }
+        spawnCars(6);
+
+        function drawCars(dt) {
+            for (const c of cars) {
+                c.t = (c.t + c.speed * dt) % 1;
+                const p = trackPoint(c.t);
+                // Lane offset perpendicular to tangent
+                const nx = -Math.sin(p.ang - Math.PI / 2) * 0; // unused; placeholder
+                const ox = Math.cos(p.ang + Math.PI / 2) * c.lane;
+                const oy = Math.sin(p.ang + Math.PI / 2) * c.lane;
+
+                ctx.save();
+                ctx.translate(p.x + ox, p.y + oy);
+                ctx.rotate(p.ang);
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.fillRect(-14, -7, 28, 14);
+                // Body
+                ctx.fillStyle = c.color;
+                ctx.shadowColor = c.color;
+                ctx.shadowBlur = settings.quality === 'high' ? 14 : 0;
+                ctx.fillRect(-12, -6, 24, 12);
+                // Windshield
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(10,12,22,0.85)';
+                ctx.fillRect(-2, -4, 8, 8);
+                // Headlights
+                ctx.fillStyle = '#fff8b0';
+                ctx.fillRect(10, -5, 2, 2);
+                ctx.fillRect(10, 3, 2, 2);
+                ctx.restore();
+            }
+        }
+
+        // ---------- Particles (speed streaks behind title) ----------
+        const particles = [];
+        function spawnParticle() {
+            const titleY = H * 0.28;
+            const side = Math.random() < 0.5 ? -1 : 1;
+            particles.push({
+                x: W * 0.5 + side * (W * 0.05 + Math.random() * W * 0.1),
+                y: titleY + (Math.random() - 0.5) * 90,
+                vx: side * (4 + Math.random() * 6),
+                vy: (Math.random() - 0.5) * 0.6,
+                life: 1,
+                hue: Math.random() < 0.5 ? '#00eaff' : '#ff2bd6',
+                len: 30 + Math.random() * 60
+            });
+        }
+
+        function drawParticles(dt) {
+            if (settings.quality === 'high' && Math.random() < 0.9) spawnParticle();
+            if (settings.quality === 'low' && Math.random() < 0.3) spawnParticle();
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= dt * 0.9;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.strokeStyle = p.hue;
+                ctx.shadowColor = p.hue;
+                ctx.shadowBlur = settings.quality === 'high' ? 12 : 0;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - Math.sign(p.vx) * p.len, p.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // ---------- Title text ----------
+        let titlePulse = 0;
+        function drawTitle() {
+            titlePulse += 0.04;
+            const pulse = 0.5 + 0.5 * Math.sin(titlePulse);
+
+            const cx = W * 0.5;
+            const cy = H * 0.28;
+
+            const size = Math.min(W * 0.11, 132);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + size + 'px "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+
+            // Outer cyan glow
+            ctx.shadowColor = '#00eaff';
+            ctx.shadowBlur = settings.quality === 'high' ? 40 + pulse * 20 : 0;
+            ctx.fillStyle = '#0b1320';
+            ctx.fillText('FUZZY RACERS', cx, cy);
+
+            // Magenta secondary glow (offset slightly for chromatic feel)
+            ctx.shadowColor = '#ff2bd6';
+            ctx.shadowBlur = settings.quality === 'high' ? 28 : 0;
+            ctx.fillStyle = '#0b1320';
+            ctx.fillText('FUZZY RACERS', cx + 2, cy);
+
+            // Main fill — bright cyan stroke + white core
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00eaff';
+            ctx.strokeText('FUZZY RACERS', cx, cy);
+
+            ctx.fillStyle = '#eafcff';
+            ctx.shadowColor = '#00eaff';
+            ctx.shadowBlur = settings.quality === 'high' ? 18 : 0;
+            ctx.fillText('FUZZY RACERS', cx, cy);
+
+            ctx.restore();
+        }
+
+        // ---------- Podium with trophies ----------
+        function drawPodium() {
+            const baseY = H * 0.92;
+            const cx = W * 0.5;
+            const blockW = Math.min(W * 0.08, 110);
+            const gap = 4;
+
+            // Block heights: 2nd, 1st, 3rd
+            const h1 = Math.min(H * 0.22, 160);
+            const h2 = h1 * 0.72;
+            const h3 = h1 * 0.55;
+
+            const blocks = [
+                { x: cx - blockW - gap - blockW / 2, h: h2, label: '2', color: '#9aa3c7' },
+                { x: cx - blockW / 2,                h: h1, label: '1', color: '#ffd400' },
+                { x: cx + blockW + gap - blockW / 2, h: h3, label: '3', color: '#cd7f32' }
+            ];
+
+            ctx.save();
+            for (const b of blocks) {
+                // Block shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(b.x + 4, baseY - b.h + 4, blockW, b.h);
+                // Block face
+                const grad = ctx.createLinearGradient(0, baseY - b.h, 0, baseY);
+                grad.addColorStop(0, '#1c2138');
+                grad.addColorStop(1, '#0b0e1a');
+                ctx.fillStyle = grad;
+                ctx.fillRect(b.x, baseY - b.h, blockW, b.h);
+                // Top edge accent
+                ctx.fillStyle = b.color;
+                ctx.shadowColor = b.color;
+                ctx.shadowBlur = settings.quality === 'high' ? 10 : 0;
+                ctx.fillRect(b.x, baseY - b.h, blockW, 3);
+                ctx.shadowBlur = 0;
+                // Rank number
+                ctx.fillStyle = b.color;
+                ctx.font = '800 28px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(b.label, b.x + blockW / 2, baseY - b.h / 2 + 4);
+
+                // Trophy on top
+                drawTrophy(b.x + blockW / 2, baseY - b.h - 6, b.color);
+            }
+            ctx.restore();
+        }
+
+        function drawTrophy(cx, baseY, color) {
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = settings.quality === 'high' ? 16 : 0;
+
+            // Cup (bowl)
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(cx - 14, baseY - 30);
+            ctx.quadraticCurveTo(cx - 14, baseY - 8, cx, baseY - 6);
+            ctx.quadraticCurveTo(cx + 14, baseY - 8, cx + 14, baseY - 30);
+            ctx.closePath();
+            ctx.fill();
+
+            // Handles
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(cx - 14, baseY - 22, 5, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx + 14, baseY - 22, 5, Math.PI * 1.5, Math.PI * 0.5);
+            ctx.stroke();
+
+            // Stem
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = color;
+            ctx.fillRect(cx - 3, baseY - 6, 6, 4);
+            // Base
+            ctx.fillRect(cx - 9, baseY - 2, 18, 4);
+
+            // Highlight on cup
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(cx - 5, baseY - 22, 2, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // ---------- Main loop ----------
+        let dashOffset = 0;
+        let last = performance.now();
+        let _rafId = 0;
+        let _cancelled = false;
+        window.addEventListener('pagehide', () => {
+            _cancelled = true;
+            if (_rafId) cancelAnimationFrame(_rafId);
+        });
+        function frame(now) {
+            if (_cancelled) return;
+            const dt = Math.min((now - last) / 1000, 0.05);
+            last = now;
+            dashOffset += dt * 80;
+
+            // Background gradient fill
+            const bg = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.5, Math.max(W, H));
+            bg.addColorStop(0, '#0b0f1f');
+            bg.addColorStop(1, '#04050a');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, W, H);
+
+            drawTrack();
+            drawCars(dt);
+            drawPodium();
+            drawParticles(dt);
+            drawTitle();
+
+            _rafId = requestAnimationFrame(frame);
+        }
+
+        resize();
+        _rafId = requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+</html>

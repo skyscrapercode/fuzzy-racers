@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garage - Fuzzy Racers</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/garage.css">
+</head>
+<body>
+    <main id="garage">
+        <header class="garage-header">
+            <h1 class="garage-title">Garage</h1>
+            <button type="button" id="docsBtn" class="docs-btn">📖 Fuzzy Documentation</button>
+            <div class="garage-step" id="stepNav">
+                <span class="clickable" data-step="select">Step 1: Select</span>
+                &nbsp;·&nbsp;
+                <span class="clickable" data-step="customize">Step 2: Customize</span>
+                &nbsp;·&nbsp;
+                <span class="clickable" data-step="opponent">Step 3: Opponent</span>
+            </div>
+        </header>
+
+        <!-- ============ STEP 1: CAR SELECTION ============ -->
+        <section class="garage-section" id="section-select">
+            <div class="garage-body">
+                <div class="car-grid" id="carGrid"><!-- car cards injected by JS --></div>
+
+                <aside class="preview-panel">
+                    <div class="preview-heading">
+                        <h2>Selected</h2>
+                        <span class="preview-name" id="previewName">—</span>
+                    </div>
+                    <canvas id="carPreview"></canvas>
+                    <div class="preview-stats" id="previewStats"></div>
+                </aside>
+            </div>
+            <footer class="garage-footer">
+                <a href="index.html" class="btn-secondary">◂ Back</a>
+                <button type="button" id="toCustomizeBtn" class="btn-primary" disabled>Next: Customize ▸</button>
+            </footer>
+        </section>
+
+        <!-- ============ STEP 2: CUSTOMIZATION ============ -->
+        <section class="garage-section" id="section-customize" hidden>
+            <div class="customize-body">
+                <div class="customize-left">
+                    <div class="tabs" role="tablist">
+                        <button class="tab active" data-tab="engine" role="tab">Engine</button>
+                        <button class="tab" data-tab="tires" role="tab">Tires</button>
+                        <button class="tab" data-tab="bodykit" role="tab">Body Kit</button>
+                        <button class="tab" data-tab="paint" role="tab">Paint</button>
+                    </div>
+
+                    <div class="tab-panel" id="tab-engine">
+                        <div class="opt-grid" id="engineGrid"></div>
+                    </div>
+
+                    <div class="tab-panel" id="tab-tires" hidden>
+                        <div class="opt-grid" id="tiresGrid"></div>
+                    </div>
+
+                    <div class="tab-panel" id="tab-bodykit" hidden>
+                        <div class="opt-grid" id="bodyKitGrid"></div>
+                    </div>
+
+                    <div class="tab-panel" id="tab-paint" hidden>
+                        <div class="paint-section">
+                            <h3>Primary Color</h3>
+                            <div class="swatches" id="paintSwatches"></div>
+                        </div>
+                        <div class="paint-section">
+                            <h3>Secondary Color</h3>
+                            <div class="swatches" id="accentSwatches"></div>
+                        </div>
+                        <div class="paint-section">
+                            <h3>Pattern</h3>
+                            <div class="pattern-grid" id="patternGrid"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="customize-right">
+                    <div class="preview-panel" style="flex: 1;">
+                        <div class="preview-heading">
+                            <h2>Live Preview</h2>
+                            <span class="preview-name" id="customPreviewName">—</span>
+                        </div>
+                        <canvas id="customPreview"></canvas>
+                    </div>
+                    <div class="final-stats">
+                        <h3>Final Stats</h3>
+                        <div id="finalStats"></div>
+                    </div>
+                </aside>
+            </div>
+
+            <footer class="garage-footer">
+                <button type="button" id="backToSelectBtn" class="btn-secondary">◂ Back</button>
+                <button type="button" id="toOpponentBtn" class="btn-primary">Next: Choose Opponent ▸</button>
+            </footer>
+        </section>
+
+        <!-- ============ STEP 3: OPPONENT / DIFFICULTY / TRACK ============ -->
+        <section class="garage-section" id="section-opponent" hidden>
+            <div class="opponent-body">
+                <div class="section-block">
+                    <div class="section-title">
+                        <h2>Choose Your Opponent</h2>
+                        <span class="section-hint">Same roster — pick anyone except your own car</span>
+                    </div>
+                    <div class="opponent-grid" id="opponentGrid"></div>
+                </div>
+
+                <div class="config-row">
+                    <div class="section-block">
+                        <div class="section-title">
+                            <h2>Difficulty</h2>
+                            <span class="section-hint">Controls fuzzy AI behavior</span>
+                        </div>
+                        <div class="cfg-grid" id="difficultyGrid"></div>
+                    </div>
+
+                    <div class="section-block">
+                        <div class="section-title">
+                            <h2>Track</h2>
+                            <span class="section-hint">Where the race takes place</span>
+                        </div>
+                        <div class="cfg-grid" id="trackGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="garage-footer">
+                <button type="button" id="backToCustomizeBtn" class="btn-secondary">◂ Back</button>
+                <a href="race.html" id="startRaceBtn" class="btn-primary">Start Race ▸</a>
+            </footer>
+        </section>
+    </main>
+
+    <!-- Fuzzy Documentation Panel -->
+    <div id="fuzzyDocs" role="dialog" aria-modal="true" aria-labelledby="docsTitle">
+        <div class="docs-frame">
+            <div class="docs-header">
+                <h1 id="docsTitle">Fuzzy Logic Documentation</h1>
+                <span class="docs-sub">ISP568 · Fuzzy Racers</span>
+                <button class="docs-close" type="button" id="docsCloseBtn" aria-label="Close">✕</button>
+            </div>
+
+            <section class="docs-section">
+                <h2>Overview</h2>
+                <p>The AI opponent in <strong>Fuzzy Racers</strong> is driven by a Mamdani-style fuzzy inference engine (<code>js/fuzzy.js</code>). On each tick the engine takes six crisp race telemetry values, fuzzifies them into degrees of membership across named linguistic sets, evaluates 33 rules in parallel, aggregates their outputs, and defuzzifies by centroid to produce throttle, brake, steering, aggression, and use-powerup commands.</p>
+                <p>The sections below are generated live from <code>FuzzyEngine.getVariableSchema()</code> and <code>FuzzyEngine.getRules()</code>, so they always match the engine that ships in this build.</p>
+            </section>
+
+            <section class="docs-section">
+                <h2>Input Variables &amp; Membership Functions</h2>
+                <p>Each input is a linguistic variable: a numeric universe carved into overlapping fuzzy sets. A given input value belongs to each set with some degree in [0,1] — that's the y-axis of the charts below.</p>
+                <div class="docs-mf-grid" id="docsInputsMF"></div>
+            </section>
+
+            <section class="docs-section">
+                <h2>Output Variables &amp; Membership Functions</h2>
+                <p>The engine produces five outputs. For each output, multiple sets can be "activated" by different firing rules; the activation strengths are aggregated by max() and the resulting clipped membership curve is then defuzzified.</p>
+                <div class="docs-mf-grid" id="docsOutputsMF"></div>
+            </section>
+
+            <section class="docs-section">
+                <h2>Rule Base (33 rules)</h2>
+                <p>Rules use <em>min()</em> for AND. Multiple rules can target the same output; their activations are aggregated by <em>max()</em>.</p>
+                <div class="docs-rule-table" id="docsRuleTable"></div>
+            </section>
+
+            <section class="docs-section">
+                <h2>Defuzzification — Centroid Method</h2>
+                <p>For each output variable, the engine samples the universe at 101 evenly-spaced points. At each sample point, the aggregated output membership is the max() across all activated sets — each clipped at its firing strength (Mamdani inference).</p>
+                <p>The crisp output is then the centroid (center of gravity) of that aggregated curve:</p>
+                <p style="text-align:center; font-family:'Consolas','Monaco',monospace; color: var(--neon-cyan); font-size: 1.1rem;">crisp = Σ(x · μ(x)) / Σ(μ(x))</p>
+                <p>This is what becomes the AI's throttle (0–100), brake (0–100), steering (-100…+100), aggression (0–100), and use_powerup (0–100). For <code>use_powerup</code>, anything above 70 makes the controller actually fire the held powerup.</p>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/state.js"></script>
+    <script src="js/fuzzy.js"></script>
+    <script src="js/car.js"></script>
+    <script src="js/renderer.js"></script>
+    <script>
+    // ====================================================================
+    // FUZZY DOCUMENTATION PANEL
+    // Renders membership functions + rule base from the live FuzzyEngine
+    // so the docs always match the shipped engine.
+    // ====================================================================
+    (function () {
+        'use strict';
+        const panel = document.getElementById('fuzzyDocs');
+        const btn   = document.getElementById('docsBtn');
+        const closeBtn = document.getElementById('docsCloseBtn');
+
+        function open() {
+            buildDocsOnce();
+            panel.classList.add('open');
+        }
+        function close() { panel.classList.remove('open'); }
+
+        btn.addEventListener('click', open);
+        closeBtn.addEventListener('click', close);
+        panel.addEventListener('click', e => { if (e.target === panel) close(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('open')) close(); });
+
+        let built = false;
+        function buildDocsOnce() {
+            if (built) return;
+            built = true;
+            const engine = new FuzzyEngine();
+            const schema = engine.getVariableSchema();
+            const rules  = engine.getRules();
+
+            // ---- Input membership functions ----
+            const inputsHost = document.getElementById('docsInputsMF');
+            inputsHost.innerHTML = '';
+            for (const v in schema.inputs) {
+                inputsHost.appendChild(buildMFCard(v, schema.inputs[v], engine._inputs[v]));
+            }
+            // ---- Output membership functions ----
+            const outputsHost = document.getElementById('docsOutputsMF');
+            outputsHost.innerHTML = '';
+            for (const v in schema.outputs) {
+                outputsHost.appendChild(buildMFCard(v, schema.outputs[v], engine._outputs[v]));
+            }
+
+            // ---- Rule table (grouped by purpose) ----
+            const ruleHost = document.getElementById('docsRuleTable');
+            const groups = [
+                { title: 'Speed Control (corner-driven throttle/brake)', ids: [1,2,3,4,5,6,7,8] },
+                { title: 'Aggression (gap-driven posture)', ids: [9,10,11,12,13] },
+                { title: 'Powerup Usage', ids: [14,15,16,17,18,19,20] },
+                { title: 'Defensive Behavior', ids: [21,22,23] },
+                { title: 'Overtaking', ids: [24,25,26,27,28,29] },
+                { title: 'Steering Magnitude', ids: [30,31,32,33] }
+            ];
+            let html = '';
+            for (const g of groups) {
+                html += `<div class="docs-rule-group-head">${g.title}</div>`;
+                for (const id of g.ids) {
+                    const r = rules.find(rr => rr.id === id);
+                    if (!r) continue;
+                    html += `<div class="docs-rule-row">
+                        <div class="rid">R${r.id}</div>
+                        <div>
+                            <div class="rtext">IF ${r.antecedents.join(' AND ')} THEN <b>${r.consequent}</b></div>
+                            <div class="rwhy">${r.why || ''}</div>
+                        </div>
+                    </div>`;
+                }
+            }
+            ruleHost.innerHTML = html;
+        }
+
+        function buildMFCard(varName, schema, engineVar) {
+            const card = document.createElement('div');
+            card.className = 'docs-mf-card';
+            const setNames = schema.sets;
+            const setColors = ['#00eaff', '#ff2bd6', '#ffd400', '#39ff7a', '#ff3355', '#a479ff'];
+            const chips = setNames.map((s, i) => `<span class="mf-set-chip" style="color:${setColors[i % setColors.length]}">${s}</span>`).join('');
+            card.innerHTML = `
+                <div class="mf-head">
+                    <span class="mf-name">${varName}</span>
+                    <span class="mf-range">[${schema.range[0]} … ${schema.range[1]}]</span>
+                </div>
+                <canvas></canvas>
+                <div class="mf-sets">${chips}</div>
+            `;
+            // Draw membership curves
+            requestAnimationFrame(() => {
+                const cv = card.querySelector('canvas');
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const rect = cv.getBoundingClientRect();
+                cv.width = rect.width * dpr;
+                cv.height = rect.height * dpr;
+                const ctx = cv.getContext('2d');
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                const W = rect.width, H = rect.height;
+
+                // Axes
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 1;
+                for (let y = 0; y <= 1; y += 0.25) {
+                    const py = H - y * H;
+                    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+                }
+
+                // Each set's curve
+                const [min, max] = schema.range;
+                setNames.forEach((setName, i) => {
+                    const fn = engineVar.sets[setName];
+                    const color = setColors[i % setColors.length];
+                    ctx.strokeStyle = color;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 8;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let p = 0; p <= 100; p++) {
+                        const x = min + (max - min) * (p / 100);
+                        const mu = fn(x);
+                        const px = (p / 100) * W;
+                        const py = H - mu * H;
+                        if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                    }
+                    ctx.stroke();
+                });
+                ctx.shadowBlur = 0;
+
+                // x-axis labels
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText(min + '', 2, H - 2);
+                ctx.textAlign = 'right';
+                ctx.fillText(max + '', W - 2, H - 2);
+            });
+            return card;
+        }
+    })();
+    </script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const STAT_KEYS = [
+            { key: 'speed',    label: 'Speed' },
+            { key: 'handling', label: 'Handling' },
+            { key: 'accel',    label: 'Accel' },
+            { key: 'armor',    label: 'Armor' }
+        ];
+        const STAT_MAX = 15; // allow boosted stats to extend past base 10
+
+        let selectedId = State.get('selectedCarId') || CarRoster[0].id;
+        let customization = Object.assign({}, State.get('customization'));
+        let opponentId = State.get('opponentCarId');
+        let difficultyId = State.get('difficulty') || 'racer';
+        let trackId = State.get('trackId') || 'city';
+        let cardCanvases = new Map();
+
+        // ============================================================
+        // SHARED HELPERS
+        // ============================================================
+
+        function fitCanvas(canvas) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const rect = canvas.getBoundingClientRect();
+            const w = Math.max(1, Math.floor(rect.width));
+            const h = Math.max(1, Math.floor(rect.height));
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            return { ctx, w, h };
+        }
+
+        function persist() {
+            const car = getCarById(selectedId);
+            if (car) {
+                State.set('selectedCarId', car.id);
+                State.set('selectedCarStats', car.stats);
+            }
+            State.set('customization', customization);
+            State.set('opponentCarId', opponentId);
+            State.set('difficulty', difficultyId);
+            State.set('trackId', trackId);
+        }
+
+        // ============================================================
+        // STEP 1: CAR SELECTION (built earlier, kept compact)
+        // ============================================================
+
+        const grid = document.getElementById('carGrid');
+        for (const car of CarRoster) {
+            const card = document.createElement('div');
+            card.className = 'car-card';
+            card.dataset.id = car.id;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'car-preview';
+            card.appendChild(canvas);
+
+            const name = document.createElement('div');
+            name.className = 'car-name';
+            name.textContent = car.name;
+            card.appendChild(name);
+
+            const tagline = document.createElement('div');
+            tagline.className = 'car-tagline';
+            tagline.textContent = car.tagline;
+            card.appendChild(tagline);
+
+            const stats = document.createElement('div');
+            stats.className = 'stat-grid';
+            for (const s of STAT_KEYS) {
+                const lbl = document.createElement('span');
+                lbl.className = 'stat-label';
+                lbl.textContent = s.label;
+                stats.appendChild(lbl);
+                const bar = document.createElement('div');
+                bar.className = 'stat-bar';
+                const fill = document.createElement('div');
+                fill.className = 'stat-fill s-' + s.key;
+                fill.style.width = (car.stats[s.key] / 10 * 100) + '%';
+                bar.appendChild(fill);
+                stats.appendChild(bar);
+            }
+            card.appendChild(stats);
+
+            const selectBtn = document.createElement('button');
+            selectBtn.type = 'button';
+            selectBtn.className = 'car-select-btn';
+            selectBtn.textContent = car.id === selectedId ? 'Selected' : 'Select';
+            card.appendChild(selectBtn);
+
+            card.addEventListener('click', () => selectCar(car.id));
+            selectBtn.addEventListener('click', e => { e.stopPropagation(); selectCar(car.id); });
+
+            grid.appendChild(card);
+            cardCanvases.set(car.id, { canvas, card, selectBtn });
+        }
+
+        function selectCar(id) {
+            selectedId = id;
+            const car = getCarById(id);
+
+            for (const [cid, refs] of cardCanvases) {
+                const isSel = cid === id;
+                refs.card.classList.toggle('selected', isSel);
+                refs.selectBtn.textContent = isSel ? 'Selected' : 'Select';
+            }
+
+            document.getElementById('previewName').textContent = car.name;
+            document.getElementById('customPreviewName').textContent = car.name;
+            document.getElementById('toCustomizeBtn').disabled = false;
+
+            renderPreviewStats(car);
+            if (opponentGrid.children.length) syncOpponentSelection();
+            persist();
+        }
+
+        function renderPreviewStats(car) {
+            const host = document.getElementById('previewStats');
+            host.innerHTML = '';
+            for (const s of STAT_KEYS) {
+                const wrap = document.createElement('div');
+                wrap.className = 'stat-grid';
+                const lbl = document.createElement('span');
+                lbl.className = 'stat-label';
+                lbl.textContent = s.label;
+                wrap.appendChild(lbl);
+                const bar = document.createElement('div');
+                bar.className = 'stat-bar';
+                const fill = document.createElement('div');
+                fill.className = 'stat-fill s-' + s.key;
+                fill.style.width = (car.stats[s.key] / 10 * 100) + '%';
+                bar.appendChild(fill);
+                wrap.appendChild(bar);
+                host.appendChild(wrap);
+            }
+        }
+
+        function drawCardPreview(car, canvas) {
+            const { ctx, w, h } = fitCanvas(canvas);
+            ctx.clearRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(0, 234, 255, 0.06)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < w; x += 24) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            const scale = Math.min(w / 110, h / 60);
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(scale, scale);
+            drawCarTopDown(ctx, { shape: car.shape, paint: car.paint, accent: car.accent, glow: true });
+            ctx.restore();
+        }
+
+        // ============================================================
+        // STEP 2: CUSTOMIZATION
+        // ============================================================
+
+        // ---- Tab switching ----
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => {
+            t.addEventListener('click', () => switchTab(t.dataset.tab));
+        });
+
+        function switchTab(name) {
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            document.querySelectorAll('.tab-panel').forEach(p => {
+                p.hidden = p.id !== 'tab-' + name;
+            });
+        }
+
+        // ---- Build option grids ----
+
+        function buildOptCard(id, name, desc, mods, drawIcon, isSelectedFn, onSelect) {
+            const card = document.createElement('div');
+            card.className = 'opt-card';
+            card.dataset.id = id;
+            card._drawIcon = drawIcon; // store for later re-render
+
+            const icon = document.createElement('canvas');
+            icon.className = 'opt-icon';
+            card.appendChild(icon);
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'opt-name';
+            nameEl.textContent = name;
+            card.appendChild(nameEl);
+
+            const descEl = document.createElement('div');
+            descEl.className = 'opt-desc';
+            descEl.textContent = desc;
+            card.appendChild(descEl);
+
+            const modsEl = document.createElement('div');
+            modsEl.className = 'opt-mods';
+            for (const chip of mods) {
+                const c = document.createElement('span');
+                c.className = 'mod-chip ' + (chip.kind || '');
+                c.textContent = chip.text;
+                modsEl.appendChild(c);
+            }
+            card.appendChild(modsEl);
+
+            card.addEventListener('click', () => {
+                onSelect(id);
+                // Update selected visuals across siblings
+                card.parentElement.querySelectorAll('.opt-card').forEach(c => {
+                    c.classList.toggle('selected', c.dataset.id === customization[isSelectedFn]);
+                });
+                refreshAll();
+            });
+
+            // Defer icon draw until inserted (needs layout for canvas size)
+            requestAnimationFrame(() => {
+                const { ctx, w, h } = fitCanvas(icon);
+                ctx.clearRect(0, 0, w, h);
+                drawIcon(ctx, w, h);
+            });
+
+            return card;
+        }
+
+        function statChip(mods) {
+            const out = [];
+            for (const k in mods) {
+                const v = mods[k];
+                if (v === 0) continue;
+                out.push({
+                    kind: v > 0 ? 'plus' : 'minus',
+                    text: (v > 0 ? '+' : '') + v + ' ' + k
+                });
+            }
+            return out;
+        }
+
+        // Engine tab
+        const engineGrid = document.getElementById('engineGrid');
+        for (const e of Engines) {
+            const chips = statChip(e.mods);
+            chips.push({ kind: '', text: 'Fuel ' + e.fuel });
+            if (e.unlocks) chips.push({ kind: 'unlock', text: '★ ' + e.unlocks });
+            const card = buildOptCard(e.id, e.name, e.desc, chips,
+                (ctx, w, h) => drawEngineIcon(ctx, w, h, e.id),
+                'engine',
+                (id) => { customization.engine = id; });
+            engineGrid.appendChild(card);
+        }
+
+        // Tires tab
+        const tiresGrid = document.getElementById('tiresGrid');
+        for (const t of Tires) {
+            const chips = statChip(t.mods);
+            const card = buildOptCard(t.id, t.name, t.desc, chips,
+                (ctx, w, h) => drawTireIcon(ctx, w, h, t.id),
+                'tires',
+                (id) => { customization.tires = id; });
+            tiresGrid.appendChild(card);
+        }
+
+        // Body kit tab
+        const bodyKitGrid = document.getElementById('bodyKitGrid');
+        for (const b of BodyKits) {
+            const chips = statChip(b.mods);
+            if (chips.length === 0) chips.push({ kind: '', text: 'No stat change' });
+            const card = buildOptCard(b.id, b.name, b.desc, chips,
+                (ctx, w, h) => drawBodyKitIcon(ctx, w, h, b.id),
+                'bodyKit',
+                (id) => { customization.bodyKit = id; });
+            bodyKitGrid.appendChild(card);
+        }
+
+        // Paint tab — primary swatches
+        const paintSwatches = document.getElementById('paintSwatches');
+        PaintPresets.forEach(color => {
+            const s = document.createElement('div');
+            s.className = 'swatch';
+            s.dataset.color = color;
+            s.style.background = color;
+            s.style.color = color;
+            s.addEventListener('click', () => {
+                customization.paint = color;
+                paintSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
+                refreshAll();
+            });
+            paintSwatches.appendChild(s);
+        });
+
+        // Paint tab — accent swatches
+        const accentSwatches = document.getElementById('accentSwatches');
+        PaintPresets.forEach(color => {
+            const s = document.createElement('div');
+            s.className = 'swatch';
+            s.dataset.color = color;
+            s.style.background = color;
+            s.style.color = color;
+            s.addEventListener('click', () => {
+                customization.accent = color;
+                accentSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
+                refreshAll();
+            });
+            accentSwatches.appendChild(s);
+        });
+
+        // Pattern grid
+        const patternGrid = document.getElementById('patternGrid');
+        for (const p of Patterns) {
+            const card = document.createElement('div');
+            card.className = 'pattern-card';
+            card.dataset.id = p.id;
+            const cv = document.createElement('canvas');
+            card.appendChild(cv);
+            const lbl = document.createElement('div');
+            lbl.className = 'pattern-name';
+            lbl.textContent = p.name;
+            card.appendChild(lbl);
+
+            card.addEventListener('click', () => {
+                customization.pattern = p.id;
+                patternGrid.querySelectorAll('.pattern-card').forEach(x => x.classList.toggle('selected', x.dataset.id === p.id));
+                refreshAll();
+            });
+            patternGrid.appendChild(card);
+
+            requestAnimationFrame(() => {
+                const { ctx, w, h } = fitCanvas(cv);
+                ctx.clearRect(0, 0, w, h);
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+                ctx.scale(Math.min(w / 140, h / 60), Math.min(w / 140, h / 60));
+                drawCarTopDown(ctx, { shape: 'sedan', paint: customization.paint, accent: customization.accent, pattern: p.id, glow: false });
+                ctx.restore();
+            });
+        }
+
+        // ---- Live preview ----
+        const customPreview = document.getElementById('customPreview');
+        let previewAngle = 0;
+
+        function drawCustomPreview() {
+            const car = getCarById(selectedId);
+            if (!car) return;
+            const { ctx, w, h } = fitCanvas(customPreview);
+            ctx.clearRect(0, 0, w, h);
+
+            // Showroom floor
+            const grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h) / 1.4);
+            grad.addColorStop(0, 'rgba(0, 234, 255, 0.12)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 1;
+            const gridSize = 36;
+            for (let x = (w/2) % gridSize; x < w; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = (h/2) % gridSize; y < h; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(0, 234, 255, 0.25)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, Math.min(w,h) * 0.40, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const scale = Math.min(w / 220, h / 130);
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(previewAngle);
+            ctx.scale(scale, scale);
+            drawCarTopDown(ctx, {
+                shape: car.shape,
+                paint: customization.paint,
+                accent: customization.accent,
+                pattern: customization.pattern,
+                bodyKit: getBodyKit(customization.bodyKit).visual,
+                glow: true
+            });
+            ctx.restore();
+        }
+
+        // ---- Final stats ----
+        let lastFinal = null;
+        function renderFinalStats(animate) {
+            const car = getCarById(selectedId);
+            if (!car) return;
+            const final = computeFinalStats(car.stats, customization);
+
+            const host = document.getElementById('finalStats');
+            if (host.children.length === 0) {
+                for (const s of STAT_KEYS) {
+                    const row = document.createElement('div');
+                    row.className = 'final-stat-row';
+                    row.innerHTML = `
+                        <span class="stat-label">${s.label}</span>
+                        <div class="final-stat-bar"><div class="final-stat-fill s-${s.key}" data-stat="${s.key}"></div></div>
+                        <span class="final-stat-value" data-stat-val="${s.key}">0</span>
+                    `;
+                    host.appendChild(row);
+                }
+            }
+
+            for (const s of STAT_KEYS) {
+                const v = final[s.key];
+                const fill = host.querySelector(`[data-stat="${s.key}"]`);
+                const valEl = host.querySelector(`[data-stat-val="${s.key}"]`);
+                fill.style.width = Math.max(0, Math.min(100, v / STAT_MAX * 100)) + '%';
+
+                const base = car.stats[s.key];
+                const delta = v - base;
+                let deltaHTML = '';
+                if (delta !== 0) {
+                    deltaHTML = `<span class="delta ${delta > 0 ? 'plus' : 'minus'}">${delta > 0 ? '+' : ''}${delta}</span>`;
+                }
+                valEl.innerHTML = v + deltaHTML;
+
+                // Flash on change
+                if (animate && lastFinal && lastFinal[s.key] !== v) {
+                    fill.classList.add('flash');
+                    setTimeout(() => fill.classList.remove('flash'), 600);
+                }
+            }
+            lastFinal = final;
+        }
+
+        // ---- Refresh everything dependent on selected car / customization ----
+        function refreshAll() {
+            drawCustomPreview();
+            renderFinalStats(true);
+            // Rebuild pattern previews when colors change so they reflect current paint/accent
+            patternGrid.querySelectorAll('.pattern-card').forEach(card => {
+                const cv = card.querySelector('canvas');
+                const { ctx, w, h } = fitCanvas(cv);
+                ctx.clearRect(0, 0, w, h);
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+                const s = Math.min(w / 140, h / 60);
+                ctx.scale(s, s);
+                drawCarTopDown(ctx, {
+                    shape: getCarById(selectedId).shape,
+                    paint: customization.paint,
+                    accent: customization.accent,
+                    pattern: card.dataset.id,
+                    glow: false
+                });
+                ctx.restore();
+            });
+            persist();
+        }
+
+        // ---- Mark current selections in all customization UIs ----
+        function syncCustomizationSelections() {
+            const setSel = (containerId, attr, value) => {
+                const cont = document.getElementById(containerId);
+                if (!cont) return;
+                cont.querySelectorAll('[data-' + attr + ']').forEach(el => {
+                    el.classList.toggle('selected', el.dataset[attr] === value);
+                });
+            };
+            engineGrid.querySelectorAll('.opt-card').forEach(c => c.classList.toggle('selected', c.dataset.id === customization.engine));
+            tiresGrid.querySelectorAll('.opt-card').forEach(c => c.classList.toggle('selected', c.dataset.id === customization.tires));
+            bodyKitGrid.querySelectorAll('.opt-card').forEach(c => c.classList.toggle('selected', c.dataset.id === customization.bodyKit));
+            paintSwatches.querySelectorAll('.swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === customization.paint));
+            accentSwatches.querySelectorAll('.swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === customization.accent));
+            patternGrid.querySelectorAll('.pattern-card').forEach(c => c.classList.toggle('selected', c.dataset.id === customization.pattern));
+        }
+
+        // ============================================================
+        // STEP 3: OPPONENT / DIFFICULTY / TRACK
+        // ============================================================
+
+        const opponentGrid = document.getElementById('opponentGrid');
+        const difficultyGrid = document.getElementById('difficultyGrid');
+        const trackGrid = document.getElementById('trackGrid');
+
+        // ---- Opponent cards ----
+        function buildOpponentGrid() {
+            opponentGrid.innerHTML = '';
+            for (const car of CarRoster) {
+                const card = document.createElement('div');
+                card.className = 'opp-card';
+                card.dataset.id = car.id;
+
+                const tag = document.createElement('span');
+                tag.className = 'disabled-tag';
+                tag.textContent = 'Your car';
+                card.appendChild(tag);
+
+                const cv = document.createElement('canvas');
+                cv.className = 'opp-preview';
+                card.appendChild(cv);
+
+                const name = document.createElement('div');
+                name.className = 'opp-name';
+                name.textContent = car.name;
+                card.appendChild(name);
+
+                const stats = document.createElement('div');
+                stats.className = 'opp-stats';
+                for (const s of STAT_KEYS) {
+                    const row = document.createElement('div');
+                    row.className = 'opp-stat-row';
+                    const lbl = document.createElement('span');
+                    lbl.className = 'stat-label';
+                    lbl.textContent = s.label.slice(0, 3);
+                    row.appendChild(lbl);
+                    const bar = document.createElement('div');
+                    bar.className = 'stat-bar';
+                    const fill = document.createElement('div');
+                    fill.className = 'stat-fill s-' + s.key;
+                    fill.style.width = (car.stats[s.key] / 10 * 100) + '%';
+                    bar.appendChild(fill);
+                    row.appendChild(bar);
+                    stats.appendChild(row);
+                }
+                card.appendChild(stats);
+
+                card.addEventListener('click', () => {
+                    if (card.classList.contains('disabled')) return;
+                    opponentId = car.id;
+                    syncOpponentSelection();
+                    persist();
+                });
+
+                opponentGrid.appendChild(card);
+                card._canvas = cv;
+            }
+        }
+
+        function drawOpponentPreviews() {
+            opponentGrid.querySelectorAll('.opp-card').forEach(card => {
+                const car = getCarById(card.dataset.id);
+                if (!car) return;
+                const { ctx, w, h } = fitCanvas(card._canvas);
+                ctx.clearRect(0, 0, w, h);
+                // Faint danger grid
+                ctx.strokeStyle = 'rgba(255, 51, 85, 0.06)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < w; x += 16) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+                }
+                const scale = Math.min(w / 110, h / 60);
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+                ctx.scale(scale, scale);
+                // Red accent override to distinguish opponents from player
+                drawCarTopDown(ctx, {
+                    shape: car.shape,
+                    paint: car.paint,
+                    accent: '#ff3355',
+                    pattern: 'stripes',
+                    glow: true
+                });
+                ctx.restore();
+            });
+        }
+
+        function syncOpponentSelection() {
+            opponentGrid.querySelectorAll('.opp-card').forEach(card => {
+                const isPlayer = card.dataset.id === selectedId;
+                card.classList.toggle('disabled', isPlayer);
+                // If the previously chosen opponent is now the player's car, clear it
+                if (isPlayer && opponentId === card.dataset.id) {
+                    opponentId = null;
+                }
+                card.classList.toggle('selected', card.dataset.id === opponentId);
+            });
+            updateStartRaceState();
+        }
+
+        // ---- Difficulty cards ----
+        function buildDifficultyGrid() {
+            difficultyGrid.innerHTML = '';
+            for (const d of Difficulties) {
+                const card = document.createElement('div');
+                card.className = 'cfg-card';
+                card.dataset.id = d.id;
+                card.style.setProperty('--accent-color', d.accent);
+                card.style.setProperty('--accent-shadow', d.accent + '66');
+
+                const head = document.createElement('div');
+                head.className = 'cfg-head';
+                const icon = document.createElement('span');
+                icon.className = 'cfg-icon';
+                icon.style.color = d.accent;
+                icon.textContent = d.icon;
+                head.appendChild(icon);
+                const name = document.createElement('span');
+                name.className = 'cfg-name';
+                name.textContent = d.name;
+                head.appendChild(name);
+                card.appendChild(head);
+
+                const tagline = document.createElement('div');
+                tagline.className = 'cfg-tagline';
+                tagline.textContent = d.tagline;
+                card.appendChild(tagline);
+
+                const ul = document.createElement('ul');
+                ul.className = 'cfg-bullets';
+                for (const b of d.bullets) {
+                    const li = document.createElement('li');
+                    const k = document.createElement('span');
+                    k.className = 'bk'; k.textContent = b.k;
+                    const v = document.createElement('span');
+                    v.className = 'bv'; v.textContent = b.v;
+                    li.appendChild(k); li.appendChild(v);
+                    ul.appendChild(li);
+                }
+                card.appendChild(ul);
+
+                card.addEventListener('click', () => {
+                    difficultyId = d.id;
+                    syncDifficultySelection();
+                    persist();
+                });
+
+                difficultyGrid.appendChild(card);
+            }
+        }
+
+        function syncDifficultySelection() {
+            difficultyGrid.querySelectorAll('.cfg-card').forEach(c => {
+                c.classList.toggle('selected', c.dataset.id === difficultyId);
+            });
+        }
+
+        // ---- Track cards ----
+        function buildTrackGrid() {
+            trackGrid.innerHTML = '';
+            for (const t of Tracks) {
+                const card = document.createElement('div');
+                card.className = 'cfg-card track-card';
+                card.dataset.id = t.id;
+                card.style.setProperty('--accent-color', t.accent);
+                card.style.setProperty('--accent-shadow', t.accent + '66');
+
+                const cv = document.createElement('canvas');
+                cv.className = 'track-map';
+                card.appendChild(cv);
+
+                const head = document.createElement('div');
+                head.className = 'cfg-head';
+                const name = document.createElement('span');
+                name.className = 'cfg-name';
+                name.textContent = t.name;
+                head.appendChild(name);
+                card.appendChild(head);
+
+                const focus = document.createElement('div');
+                focus.className = 'cfg-focus';
+                focus.textContent = t.focus;
+                card.appendChild(focus);
+
+                const desc = document.createElement('div');
+                desc.className = 'cfg-tagline';
+                desc.textContent = t.desc;
+                card.appendChild(desc);
+
+                card.addEventListener('click', () => {
+                    trackId = t.id;
+                    syncTrackSelection();
+                    persist();
+                });
+
+                trackGrid.appendChild(card);
+                card._canvas = cv;
+            }
+        }
+
+        function drawTrackPreviews() {
+            trackGrid.querySelectorAll('.track-card').forEach(card => {
+                const track = getTrack(card.dataset.id);
+                const { ctx, w, h } = fitCanvas(card._canvas);
+                drawTrackMinimap(ctx, w, h, track.id, track.accent);
+            });
+        }
+
+        function syncTrackSelection() {
+            trackGrid.querySelectorAll('.cfg-card').forEach(c => {
+                c.classList.toggle('selected', c.dataset.id === trackId);
+            });
+        }
+
+        function updateStartRaceState() {
+            const start = document.getElementById('startRaceBtn');
+            const ready = !!opponentId && !!difficultyId && !!trackId;
+            if (ready) {
+                start.classList.remove('disabled');
+                start.removeAttribute('aria-disabled');
+                start.style.pointerEvents = '';
+                start.style.opacity = '';
+            } else {
+                start.setAttribute('aria-disabled', 'true');
+                start.style.pointerEvents = 'none';
+                start.style.opacity = '0.45';
+            }
+        }
+
+        // ============================================================
+        // STEP NAVIGATION
+        // ============================================================
+
+        const sectionSelect = document.getElementById('section-select');
+        const sectionCustomize = document.getElementById('section-customize');
+        const sectionOpponent = document.getElementById('section-opponent');
+        const stepNav = document.getElementById('stepNav');
+
+        function goToStep(step) {
+            sectionSelect.hidden    = (step !== 'select');
+            sectionCustomize.hidden = (step !== 'customize');
+            sectionOpponent.hidden  = (step !== 'opponent');
+            stepNav.querySelectorAll('[data-step]').forEach(el => {
+                el.classList.toggle('step-active', el.dataset.step === step);
+            });
+            if (step === 'customize') {
+                requestAnimationFrame(() => {
+                    syncCustomizationSelections();
+                    redrawAllOptionIcons();
+                    refreshAll();
+                });
+            }
+            if (step === 'opponent') {
+                requestAnimationFrame(() => {
+                    drawOpponentPreviews();
+                    drawTrackPreviews();
+                    syncOpponentSelection();
+                    syncDifficultySelection();
+                    syncTrackSelection();
+                });
+            }
+        }
+
+        function redrawAllOptionIcons() {
+            for (const grid of [engineGrid, tiresGrid, bodyKitGrid]) {
+                grid.querySelectorAll('.opt-card').forEach(card => {
+                    if (!card._drawIcon) return;
+                    const icon = card.querySelector('canvas.opt-icon');
+                    const { ctx, w, h } = fitCanvas(icon);
+                    ctx.clearRect(0, 0, w, h);
+                    card._drawIcon(ctx, w, h);
+                });
+            }
+        }
+
+        stepNav.querySelectorAll('[data-step]').forEach(el => {
+            el.addEventListener('click', () => {
+                if (el.dataset.step !== 'select' && !State.get('selectedCarId')) return;
+                goToStep(el.dataset.step);
+            });
+        });
+
+        document.getElementById('toCustomizeBtn').addEventListener('click', () => goToStep('customize'));
+        document.getElementById('backToSelectBtn').addEventListener('click', () => goToStep('select'));
+        document.getElementById('toOpponentBtn').addEventListener('click', () => goToStep('opponent'));
+        document.getElementById('backToCustomizeBtn').addEventListener('click', () => goToStep('customize'));
+        document.getElementById('startRaceBtn').addEventListener('click', (e) => {
+            if (!opponentId || !difficultyId || !trackId) {
+                e.preventDefault();
+                return;
+            }
+            persist();
+            // Browser follows the href to race.html
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+
+        function initAll() {
+            for (const car of CarRoster) {
+                drawCardPreview(car, cardCanvases.get(car.id).canvas);
+            }
+            buildOpponentGrid();
+            buildDifficultyGrid();
+            buildTrackGrid();
+            selectCar(selectedId);
+            updateStartRaceState();
+
+            // Animate preview rotation
+            let _gFrameRaf = 0, _gCancelled = false;
+            window.addEventListener('pagehide', () => {
+                _gCancelled = true;
+                if (_gFrameRaf) cancelAnimationFrame(_gFrameRaf);
+            });
+            function frame() {
+                if (_gCancelled) return;
+                previewAngle += 0.004;
+                if (!sectionSelect.hidden) {
+                    // existing turntable on selection screen
+                    const { ctx, w, h } = fitCanvas(document.getElementById('carPreview'));
+                    const car = getCarById(selectedId);
+                    if (car) {
+                        ctx.clearRect(0, 0, w, h);
+                        const grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h) / 1.4);
+                        grad.addColorStop(0, 'rgba(0, 234, 255, 0.10)');
+                        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.strokeStyle = 'rgba(0, 234, 255, 0.25)';
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.arc(w/2, h/2, Math.min(w,h) * 0.36, 0, Math.PI * 2);
+                        ctx.stroke();
+                        const sc = Math.min(w / 220, h / 130);
+                        ctx.save();
+                        ctx.translate(w / 2, h / 2);
+                        ctx.rotate(previewAngle);
+                        ctx.scale(sc, sc);
+                        drawCarTopDown(ctx, {
+                            shape: car.shape,
+                            paint: customization.paint,
+                            accent: customization.accent,
+                            pattern: customization.pattern,
+                            bodyKit: getBodyKit(customization.bodyKit).visual,
+                            glow: true
+                        });
+                        ctx.restore();
+                    }
+                }
+                if (!sectionCustomize.hidden) drawCustomPreview();
+                _gFrameRaf = requestAnimationFrame(frame);
+            }
+            _gFrameRaf = requestAnimationFrame(frame);
+
+            // Initial step from stored state (default: select)
+            goToStep('select');
+            stepNav.querySelector('[data-step="select"]').classList.add('step-active');
+        }
+
+        if (document.readyState === 'complete') initAll();
+        else window.addEventListener('load', initAll);
+
+        window.addEventListener('resize', () => {
+            for (const car of CarRoster) {
+                drawCardPreview(car, cardCanvases.get(car.id).canvas);
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

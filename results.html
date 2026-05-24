@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results - Fuzzy Racers</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="results-body">
+    <canvas id="bgCanvas"></canvas>
+
+    <main id="results">
+        <header class="results-header">
+            <h1 id="resultsTitle">RACE RESULTS</h1>
+            <div class="results-subtitle" id="resultsSubtitle">—</div>
+        </header>
+
+        <section class="results-grid">
+            <div class="podium-panel">
+                <canvas id="podiumCanvas"></canvas>
+            </div>
+
+            <aside class="stats-column">
+                <div class="stat-card">
+                    <h3>Race Summary</h3>
+                    <div class="stat-rows" id="summaryRows"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Lap Times</h3>
+                    <div class="lap-table" id="lapTable"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Combat & Powerups</h3>
+                    <div class="stat-rows" id="combatRows"></div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="fuzzy-summary">
+            <div class="fuzzy-left">
+                <h2>AI Fuzzy Brain</h2>
+                <p class="fuzzy-intro" id="fuzzyIntro">—</p>
+                <div class="fuzzy-counts" id="fuzzyCounts"></div>
+                <h3 class="fuzzy-sub">Top Fired Rules</h3>
+                <div class="rule-list" id="topRules"></div>
+            </div>
+            <div class="fuzzy-right">
+                <h3 class="fuzzy-sub">AI Output Distribution</h3>
+                <canvas id="pieChart" width="280" height="280"></canvas>
+                <div class="pie-legend" id="pieLegend"></div>
+            </div>
+        </section>
+
+        <footer class="results-buttons">
+            <a href="garage.html" class="btn-result btn-result-primary">
+                <span class="btn-icon">🔄</span> Race Again
+            </a>
+            <a href="index.html" class="btn-result">
+                <span class="btn-icon">🏠</span> Main Menu
+            </a>
+            <button type="button" class="btn-result" id="viewFuzzyBtn">
+                <span class="btn-icon">📊</span> View Fuzzy Details
+            </button>
+            <button type="button" class="btn-result" id="howFuzzyBtn">
+                <span class="btn-icon">🧠</span> How Fuzzy Logic Works
+            </button>
+        </footer>
+    </main>
+
+    <!-- Full rule log modal -->
+    <div class="modal" id="modal-fuzzy" role="dialog" aria-modal="true">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title">Full AI Rule Log</h2>
+                <button class="modal-close" type="button" data-close>✕</button>
+            </div>
+            <div class="modal-section">
+                <p>Every fuzzy rule the AI evaluated this race, ranked by how many times it fired.</p>
+            </div>
+            <div class="modal-section" id="fullRuleList"></div>
+        </div>
+    </div>
+
+    <!-- How fuzzy logic works modal -->
+    <div class="modal" id="modal-howfuzzy" role="dialog" aria-modal="true">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2 class="modal-title">How Fuzzy Logic Works</h2>
+                <button class="modal-close" type="button" data-close>✕</button>
+            </div>
+            <section class="modal-section">
+                <h3>What is it?</h3>
+                <p>Fuzzy logic is a way of reasoning with <strong>degrees of truth</strong> rather than hard yes/no answers. A fact like "the player is close" can be <em>0.7 true</em> instead of just true or false, so multiple soft conditions blend together into a smooth decision.</p>
+            </section>
+            <section class="modal-section">
+                <h3>Why use it for racing AI?</h3>
+                <p>Race telemetry is continuous and messy — distance, speed, corner sharpness, health, gap. A traditional if/else AI either explodes with edge cases or jerks between behaviors at hard thresholds. A fuzzy controller weighs every signal at once and produces a <strong>smooth, defensible action</strong>.</p>
+            </section>
+            <section class="modal-section">
+                <h3>The 3-step pipeline</h3>
+                <div class="fuzzy-diagram">
+                    <div class="fz-step s1"><div class="fz-num">STEP 1</div><div class="fz-name">Fuzzification</div><div class="fz-text">Raw telemetry → degrees of membership in named sets like <em>very_close</em>, <em>fast</em>, <em>critical</em>.</div></div>
+                    <div class="fz-arrow">▸</div>
+                    <div class="fz-step s2"><div class="fz-num">STEP 2</div><div class="fz-name">Rule Evaluation</div><div class="fz-text">33 IF/THEN rules fire in parallel. Each rule's strength is min() of its conditions; outputs are aggregated by max().</div></div>
+                    <div class="fz-arrow">▸</div>
+                    <div class="fz-step s3"><div class="fz-num">STEP 3</div><div class="fz-name">Defuzzification</div><div class="fz-text">The aggregated output curve is collapsed to one crisp number via the centroid method — becoming throttle / brake / steering.</div></div>
+                </div>
+            </section>
+            <section class="modal-section">
+                <h3>What in this game is fuzzy?</h3>
+                <ul class="fz-bullets">
+                    <li><strong>Speed control</strong> — throttle and brake from corner sharpness and distance.</li>
+                    <li><strong>Powerup timing</strong> — when to fire from gap, health, and "powerup ready" together.</li>
+                    <li><strong>Aggression</strong> — defensive vs attacking blend of gap, health, proximity.</li>
+                    <li><strong>Braking under risk</strong> — critical-health AI brakes earlier and softens.</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/state.js"></script>
+    <script src="js/car.js"></script>
+    <script src="js/renderer.js"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        // ---------- Load result ----------
+        const result = State.get('lastResult');
+        const playerWon = result && result.winner === 'player';
+
+        if (!result) {
+            document.getElementById('resultsTitle').textContent = 'No race played yet';
+            document.getElementById('resultsSubtitle').textContent = 'Head to the garage to start one.';
+            return;
+        }
+
+        const playerData = getCarById(result.cars.player.id) || CarRoster[0];
+        const aiData     = getCarById(result.cars.ai.id) || CarRoster[1];
+
+        // ---------- Header ----------
+        document.getElementById('resultsTitle').textContent = playerWon ? 'YOU WIN!' : 'DEFEATED';
+        document.getElementById('resultsTitle').classList.toggle('win', playerWon);
+        document.getElementById('resultsTitle').classList.toggle('loss', !playerWon);
+        const trackName = ({ city: 'City Circuit', desert: 'Desert Highway', mountain: 'Mountain Pass' })[result.track] || result.track;
+        const diffName  = (result.difficulty || 'racer').toUpperCase();
+        document.getElementById('resultsSubtitle').textContent =
+            `${trackName} · ${diffName} difficulty · ${result.time.toFixed(2)}s`;
+
+        // ---------- Summary stat rows ----------
+        const summaryRows = document.getElementById('summaryRows');
+        const winnerCar = playerWon ? playerData : aiData;
+        const loserCar  = playerWon ? aiData : playerData;
+        summaryRows.innerHTML = `
+            <div class="stat-row"><span>Winner</span><span class="stat-v">${winnerCar.name}</span></div>
+            <div class="stat-row"><span>Runner-up</span><span class="stat-v">${loserCar.name}</span></div>
+            <div class="stat-row"><span>Finish time</span><span class="stat-v mono">${result.time.toFixed(2)} s</span></div>
+            <div class="stat-row"><span>Your position</span><span class="stat-v ${playerWon ? 'win' : 'loss'}">${playerWon ? '1ST' : '2ND'}</span></div>
+        `;
+
+        // ---------- Lap times ----------
+        const lapTable = document.getElementById('lapTable');
+        const pLaps = result.cars.player.lapTimes || [];
+        const aLaps = result.cars.ai.lapTimes || [];
+        const totalLaps = Math.max(pLaps.length, aLaps.length, 3);
+        let lapHTML = '<div class="lap-row lap-head"><span>Lap</span><span>You</span><span>Opponent</span></div>';
+        for (let i = 0; i < totalLaps; i++) {
+            const p = pLaps[i];
+            const a = aLaps[i];
+            const faster = (p != null && a != null) ? (p < a ? 'p' : (p > a ? 'a' : null)) : null;
+            lapHTML += `<div class="lap-row">
+                <span>${i + 1}</span>
+                <span class="mono ${faster==='p'?'win':''}">${p != null ? p.toFixed(2) + 's' : '—'}</span>
+                <span class="mono ${faster==='a'?'loss':''}">${a != null ? a.toFixed(2) + 's' : '—'}</span>
+            </div>`;
+        }
+        lapTable.innerHTML = lapHTML;
+
+        // ---------- Combat & powerups ----------
+        const combatRows = document.getElementById('combatRows');
+        const ppu = result.cars.player.powerupsUsed || { count: 0, types: {} };
+        const apu = result.cars.ai.powerupsUsed     || { count: 0, types: {} };
+        const ptypes = Object.keys(ppu.types).join(', ') || '—';
+        const atypes = Object.keys(apu.types).join(', ') || '—';
+        combatRows.innerHTML = `
+            <div class="stat-row"><span>Top speed (you)</span><span class="stat-v mono">${result.cars.player.topSpeed} px/s</span></div>
+            <div class="stat-row"><span>Top speed (AI)</span><span class="stat-v mono">${result.cars.ai.topSpeed} px/s</span></div>
+            <div class="stat-row"><span>Damage taken (you)</span><span class="stat-v mono">${result.cars.player.damageTaken} HP</span></div>
+            <div class="stat-row"><span>Damage taken (AI)</span><span class="stat-v mono">${result.cars.ai.damageTaken} HP</span></div>
+            <div class="stat-row"><span>Powerups used (you)</span><span class="stat-v">${ppu.count} <span class="dim">(${ptypes})</span></span></div>
+            <div class="stat-row"><span>Powerups used (AI)</span><span class="stat-v">${apu.count} <span class="dim">(${atypes})</span></span></div>
+        `;
+
+        // ---------- Fuzzy summary ----------
+        const fuzzy = result.fuzzy;
+        const fuzzyIntro = document.getElementById('fuzzyIntro');
+        const fuzzyCounts = document.getElementById('fuzzyCounts');
+        const topRulesEl = document.getElementById('topRules');
+
+        if (fuzzy) {
+            fuzzyIntro.textContent =
+                'The opponent\'s controller used a Mamdani fuzzy inference engine — fuzzified race telemetry, ' +
+                'evaluated rule activations, and defuzzified by centroid into throttle/brake/steering commands. ' +
+                'On ' + diffName + ' difficulty the engine re-ticked roughly every ' +
+                ({rookie:'1.5s', racer:'0.8s', champion:'0.3s'})[result.difficulty || 'racer'] + '.';
+
+            fuzzyCounts.innerHTML = `
+                <div class="metric"><div class="metric-num">${fuzzy.ticks}</div><div class="metric-label">Fuzzy ticks</div></div>
+                <div class="metric"><div class="metric-num">${fuzzy.totalRuleFires}</div><div class="metric-label">Rule fires</div></div>
+                <div class="metric"><div class="metric-num">${fuzzy.allRules.length}</div><div class="metric-label">Unique rules used</div></div>
+            `;
+
+            if (fuzzy.topRules.length === 0) {
+                topRulesEl.innerHTML = '<div class="dim">No rules fired (AI never ticked).</div>';
+            } else {
+                const maxFires = fuzzy.topRules[0].count;
+                topRulesEl.innerHTML = fuzzy.topRules.map((r, i) => `
+                    <div class="top-rule">
+                        <span class="rank">#${i + 1}</span>
+                        <div class="rule-body">
+                            <div class="rule-text">${r.antecedents.join(' AND ')} → <b>${r.consequent}</b></div>
+                            <div class="rule-why">${r.why || ''}</div>
+                            <div class="rule-bar"><div class="rule-bar-fill" style="width:${(r.count / maxFires * 100).toFixed(0)}%"></div></div>
+                        </div>
+                        <span class="rule-count">${r.count}×</span>
+                    </div>
+                `).join('');
+            }
+        } else {
+            fuzzyIntro.textContent = 'AI didn\'t run long enough to gather fuzzy stats.';
+            fuzzyCounts.innerHTML = '';
+            topRulesEl.innerHTML = '';
+        }
+
+        // ---------- Pie chart of AI output distribution ----------
+        drawPieChart();
+
+        function drawPieChart() {
+            const canvas = document.getElementById('pieChart');
+            const ctx = canvas.getContext('2d');
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const W = canvas.width / dpr, H = canvas.height / dpr;
+            canvas.width = canvas.width * dpr;
+            canvas.height = canvas.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.clearRect(0, 0, W, H);
+
+            if (!fuzzy || fuzzy.ticks === 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No fuzzy data', W/2, H/2);
+                return;
+            }
+
+            const avg = fuzzy.outputAverages;
+            // 4 slices: throttle, brake, aggression, use_powerup (defensive/aggressive split)
+            const slices = [
+                { label: 'Throttle',     value: avg.throttle,    color: '#00eaff' },
+                { label: 'Brake',        value: avg.brake,       color: '#ff3355' },
+                { label: 'Aggression',   value: avg.aggression,  color: '#ffd400' },
+                { label: 'Powerup Push', value: avg.use_powerup, color: '#39ff7a' }
+            ];
+            const total = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
+            if (total === 0) return;
+
+            const cx = W / 2, cy = H / 2;
+            const r  = Math.min(W, H) / 2 - 18;
+
+            let angle = -Math.PI / 2;
+            for (const s of slices) {
+                const frac = Math.max(0, s.value) / total;
+                const next = angle + frac * Math.PI * 2;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, angle, next);
+                ctx.closePath();
+                ctx.fillStyle = s.color;
+                ctx.shadowColor = s.color;
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                // Label
+                const mid = (angle + next) / 2;
+                const lx = cx + Math.cos(mid) * r * 0.65;
+                const ly = cy + Math.sin(mid) * r * 0.65;
+                if (frac > 0.05) {
+                    ctx.fillStyle = '#0a0d18';
+                    ctx.font = '700 11px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText((frac * 100).toFixed(0) + '%', lx, ly);
+                }
+                angle = next;
+            }
+            // Inner ring (donut hole)
+            ctx.fillStyle = '#0b0e1a';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // Center text
+            ctx.fillStyle = '#fff';
+            ctx.font = '800 11px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('AI MIX', cx, cy);
+
+            // Legend
+            const legend = document.getElementById('pieLegend');
+            legend.innerHTML = slices.map(s => `
+                <div class="pl-row">
+                    <span class="pl-swatch" style="background:${s.color}"></span>
+                    <span class="pl-label">${s.label}</span>
+                    <span class="pl-val">${s.value.toFixed(1)}</span>
+                </div>`).join('');
+        }
+
+        // ---------- Podium animation ----------
+        const podium = document.getElementById('podiumCanvas');
+        const pctx = podium.getContext('2d');
+        let podiumStart = performance.now();
+        const particles = [];
+
+        function fitPodium() {
+            const rect = podium.getBoundingClientRect();
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            podium.width = rect.width * dpr;
+            podium.height = rect.height * dpr;
+            pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        fitPodium();
+        window.addEventListener('resize', fitPodium);
+        // First measurement happens before CSS grid finishes laying out the panel.
+        // Re-fit a few times in the first 500ms to catch the final size.
+        for (const delay of [50, 200, 500]) setTimeout(fitPodium, delay);
+
+        function drawPodium(now) {
+            const rect = podium.getBoundingClientRect();
+            const W = rect.width, H = rect.height;
+            pctx.clearRect(0, 0, W, H);
+
+            // Background spotlight
+            const grad = pctx.createRadialGradient(W/2, H*0.85, 0, W/2, H*0.85, Math.max(W,H));
+            grad.addColorStop(0, 'rgba(0, 234, 255, 0.18)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            pctx.fillStyle = grad;
+            pctx.fillRect(0, 0, W, H);
+
+            // Rise animation: 0..1 over 1.2 s, ease-out
+            const t = Math.min(1, (now - podiumStart) / 1200);
+            const ease = 1 - Math.pow(1 - t, 3);
+
+            const groundY = H - 30;
+            const podW = Math.min(W * 0.18, 110);
+            const gap = 14;
+
+            // Two podium blocks side by side: 1st (taller, center) and 2nd
+            const h1 = Math.min(H * 0.42, 220);
+            const h2 = h1 * 0.72;
+
+            const blocks = [
+                { x: W/2 - podW/2,        h: h1, place: 1, color: '#ffd400', car: winnerCar, isPlayer: playerWon },
+                { x: W/2 + podW/2 + gap,  h: h2, place: 2, color: '#9aa3c7', car: loserCar,  isPlayer: !playerWon }
+            ];
+
+            for (const b of blocks) {
+                const yRise = (1 - ease) * b.h;
+                // Block face
+                pctx.save();
+                pctx.translate(b.x, groundY - b.h + yRise);
+                // Shadow
+                pctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                pctx.fillRect(4, 4, podW, b.h);
+                // Block
+                const gr = pctx.createLinearGradient(0, 0, 0, b.h);
+                gr.addColorStop(0, '#1c2138');
+                gr.addColorStop(1, '#0b0e1a');
+                pctx.fillStyle = gr;
+                pctx.fillRect(0, 0, podW, b.h);
+                // Top accent
+                pctx.fillStyle = b.color;
+                pctx.shadowColor = b.color;
+                pctx.shadowBlur = 12;
+                pctx.fillRect(0, 0, podW, 3);
+                pctx.shadowBlur = 0;
+                // Place number
+                pctx.fillStyle = b.color;
+                pctx.font = '900 36px sans-serif';
+                pctx.textAlign = 'center';
+                pctx.textBaseline = 'middle';
+                pctx.fillText(b.place + '', podW/2, b.h/2 + 6);
+                pctx.font = '700 11px monospace';
+                pctx.fillStyle = 'rgba(255,255,255,0.5)';
+                pctx.fillText(b.place === 1 ? 'WINNER' : 'RUNNER-UP', podW/2, b.h/2 + 32);
+                pctx.restore();
+
+                // Car on top (after rise completes)
+                const carT = Math.max(0, Math.min(1, (t - 0.6) / 0.4));
+                if (carT > 0) {
+                    const cx = b.x + podW / 2;
+                    const cy = (groundY - b.h + yRise) - 28;
+                    pctx.save();
+                    pctx.globalAlpha = carT;
+                    pctx.translate(cx, cy);
+                    pctx.rotate(-Math.PI / 2); // face up
+                    const cust = (b.isPlayer && result.customization) ? result.customization : {
+                        engine: 'stock', tires: 'standard', bodyKit: 'stock',
+                        paint: b.car.paint, accent: '#ff3355', pattern: 'stripes'
+                    };
+                    drawCarTopDown(pctx, {
+                        shape: b.car.shape,
+                        paint: cust.paint,
+                        accent: cust.accent,
+                        pattern: cust.pattern,
+                        bodyKit: ({ stock:'stock', aero:'spoiler', armored:'sidebars', stealth:'lowprofile' })[cust.bodyKit] || 'stock',
+                        glow: true
+                    });
+                    pctx.restore();
+
+                    // Name label
+                    pctx.save();
+                    pctx.globalAlpha = carT;
+                    pctx.fillStyle = b.color;
+                    pctx.shadowColor = b.color;
+                    pctx.shadowBlur = 8;
+                    pctx.font = '800 12px monospace';
+                    pctx.textAlign = 'center';
+                    pctx.fillText(b.car.name.toUpperCase(), cx, cy - 60);
+                    pctx.restore();
+                }
+            }
+
+            // Confetti or smoke
+            spawnAndDrawParticles(now, W, H);
+        }
+
+        function spawnAndDrawParticles(now, W, H) {
+            // Spawn
+            if (playerWon) {
+                if (Math.random() < 0.6) {
+                    const colors = ['#00eaff', '#ff2bd6', '#ffd400', '#39ff7a', '#ff3355', '#a479ff'];
+                    particles.push({
+                        x: Math.random() * W,
+                        y: -10,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: 80 + Math.random() * 90,
+                        rot: Math.random() * Math.PI * 2,
+                        spin: (Math.random() - 0.5) * 8,
+                        size: 4 + Math.random() * 5,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 6,
+                        kind: 'confetti'
+                    });
+                }
+            } else {
+                if (Math.random() < 0.4) {
+                    particles.push({
+                        x: W / 2 + (Math.random() - 0.5) * W * 0.4,
+                        y: H * 0.85 + Math.random() * 20,
+                        vx: (Math.random() - 0.5) * 30,
+                        vy: -20 - Math.random() * 40,
+                        size: 10 + Math.random() * 12,
+                        color: 'rgba(40, 40, 50, 0.8)',
+                        life: 2.4,
+                        maxLife: 2.4,
+                        kind: 'smoke'
+                    });
+                }
+            }
+            const dt = 1 / 60;
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                if (p.kind === 'confetti') p.vy += 80 * dt; // gravity
+                p.life -= dt;
+                if (p.life <= 0 || p.y > H + 40) { particles.splice(i, 1); continue; }
+                if (p.kind === 'confetti') {
+                    p.rot += p.spin * dt;
+                    pctx.save();
+                    pctx.translate(p.x, p.y);
+                    pctx.rotate(p.rot);
+                    pctx.fillStyle = p.color;
+                    pctx.fillRect(-p.size/2, -p.size*0.3, p.size, p.size*0.6);
+                    pctx.restore();
+                } else {
+                    pctx.globalAlpha = Math.max(0, p.life / p.maxLife) * 0.7;
+                    pctx.fillStyle = p.color;
+                    pctx.beginPath();
+                    pctx.arc(p.x, p.y, p.size * (1.8 - p.life / p.maxLife), 0, Math.PI * 2);
+                    pctx.fill();
+                    pctx.globalAlpha = 1;
+                }
+            }
+        }
+
+        let _podiumRaf = 0, _cancelled = false;
+        window.addEventListener('pagehide', () => {
+            _cancelled = true;
+            if (_podiumRaf) cancelAnimationFrame(_podiumRaf);
+            if (_bgRaf) cancelAnimationFrame(_bgRaf);
+        });
+        function podiumLoop(now) {
+            if (_cancelled) return;
+            drawPodium(now);
+            _podiumRaf = requestAnimationFrame(podiumLoop);
+        }
+        _podiumRaf = requestAnimationFrame(podiumLoop);
+
+        // ---------- Menu background canvas (light) ----------
+        const bgC = document.getElementById('bgCanvas');
+        const bgCtx = bgC.getContext('2d');
+        function fitBg() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            bgC.width = window.innerWidth * dpr;
+            bgC.height = window.innerHeight * dpr;
+            bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            bgC.style.width = window.innerWidth + 'px';
+            bgC.style.height = window.innerHeight + 'px';
+        }
+        fitBg();
+        window.addEventListener('resize', fitBg);
+        let _bgRaf = 0;
+        function drawBg(now) {
+            if (_cancelled) return;
+            const W = window.innerWidth, H = window.innerHeight;
+            const grad = bgCtx.createRadialGradient(W/2, H*0.35, 0, W/2, H*0.5, Math.max(W, H));
+            grad.addColorStop(0, '#0b0f1f');
+            grad.addColorStop(1, '#04050a');
+            bgCtx.fillStyle = grad;
+            bgCtx.fillRect(0, 0, W, H);
+            // Subtle moving lines for vibe
+            bgCtx.strokeStyle = 'rgba(0, 234, 255, 0.04)';
+            bgCtx.lineWidth = 1;
+            for (let i = 0; i < 12; i++) {
+                const y = (i / 12) * H + ((now / 40) % (H / 12));
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, y);
+                bgCtx.lineTo(W, y);
+                bgCtx.stroke();
+            }
+            _bgRaf = requestAnimationFrame(drawBg);
+        }
+        _bgRaf = requestAnimationFrame(drawBg);
+
+        // ---------- Fuzzy details modal ----------
+        const modal = document.getElementById('modal-fuzzy');
+        const fullList = document.getElementById('fullRuleList');
+        document.getElementById('viewFuzzyBtn').addEventListener('click', () => {
+            if (!fuzzy || !fuzzy.allRules) {
+                fullList.innerHTML = '<div class="dim">No rule fire data recorded.</div>';
+            } else if (fullList.children.length === 0) {
+                const max = fuzzy.allRules[0]?.count || 1;
+                fullList.innerHTML = '<div class="rule-list">' + fuzzy.allRules.map((r, i) => `
+                    <div class="top-rule">
+                        <span class="rank">#${i+1}</span>
+                        <div class="rule-body">
+                            <div class="rule-text">${r.antecedents.join(' AND ')} → <b>${r.consequent}</b></div>
+                            <div class="rule-why">${r.why || ''}</div>
+                            <div class="rule-bar"><div class="rule-bar-fill" style="width:${(r.count/max*100).toFixed(0)}%"></div></div>
+                        </div>
+                        <span class="rule-count">${r.count}×</span>
+                    </div>`).join('') + '</div>';
+            }
+            modal.classList.add('open');
+        });
+        // Wire close handlers on every modal
+        document.querySelectorAll('.modal').forEach(m => {
+            m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => m.classList.remove('open')));
+            m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+        });
+
+        // How Fuzzy Logic Works
+        const howFuzzy = document.getElementById('modal-howfuzzy');
+        document.getElementById('howFuzzyBtn').addEventListener('click', () => howFuzzy.classList.add('open'));
+    })();
+    </script>
+</body>
+</html>
