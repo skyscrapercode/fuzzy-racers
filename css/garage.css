@@ -1051,10 +1051,45 @@
 
 .docs-mf-card canvas {
     width: 100%;
-    aspect-ratio: 3 / 1;
+    aspect-ratio: 5 / 2;            /* taller so the new axis labels fit */
     background: #0a0d18;
     border-radius: 4px;
     display: block;
+}
+
+/* Quick-reference table for input/output variables — paired with the
+   membership-function charts so the chart units are unambiguous. */
+.docs-var-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6rem 0 1rem;
+    font-size: 0.82rem;
+}
+.docs-var-table th,
+.docs-var-table td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+.docs-var-table th {
+    color: var(--neon-yellow);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.docs-var-table td.var-name {
+    color: var(--neon-cyan);
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.docs-var-table td.var-range {
+    color: var(--text-mute);
+    font-family: 'Consolas', 'Monaco', monospace;
+    white-space: nowrap;
 }
 
 .docs-mf-card .mf-sets {

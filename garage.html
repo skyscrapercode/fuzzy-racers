@@ -150,33 +150,81 @@
             <section class="docs-section">
                 <h2>Overview</h2>
                 <p>The AI opponent in <strong>Fuzzy Racers</strong> is driven by a Mamdani-style fuzzy inference engine (<code>js/fuzzy.js</code>). On each tick the engine takes six crisp race telemetry values, fuzzifies them into degrees of membership across named linguistic sets, evaluates 33 rules in parallel, aggregates their outputs, and defuzzifies by centroid to produce throttle, brake, steering, aggression, and use-powerup commands.</p>
-                <p>The sections below are generated live from <code>FuzzyEngine.getVariableSchema()</code> and <code>FuzzyEngine.getRules()</code>, so they always match the engine that ships in this build.</p>
+                <p>The sections below are generated live from <code>FuzzyEngine.getVariableSchema()</code> and <code>FuzzyEngine.getRules()</code>, so they always match the engine that ships in this build. Hit <code>F</code> during a race to open the live <em>AI Fuzzy Brain</em> inspector and watch the engine fire in real time.</p>
             </section>
 
             <section class="docs-section">
                 <h2>Input Variables &amp; Membership Functions</h2>
-                <p>Each input is a linguistic variable: a numeric universe carved into overlapping fuzzy sets. A given input value belongs to each set with some degree in [0,1] — that's the y-axis of the charts below.</p>
+                <p>Each input is a linguistic variable: a numeric <strong>universe</strong> (the X axis of the chart) carved into overlapping fuzzy sets. A given input value belongs to each set with some <strong>degree of membership μ</strong> in [0, 1] (the Y axis). The table below shows what each input measures and the units shown on the chart's X axis.</p>
+
+                <table class="docs-var-table">
+                    <thead>
+                    <tr><th>Variable</th><th>X axis (universe)</th><th>What it measures</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="var-name">distance</td>     <td class="var-range">0 → 1000 px</td>      <td>Euclidean distance from the AI car to the player car (clamped at 1000 px).</td></tr>
+                        <tr><td class="var-name">player_speed</td> <td class="var-range">0 → 100 %</td>        <td>Player's current speed as a percentage of their car's top speed cap.</td></tr>
+                        <tr><td class="var-name">corner</td>       <td class="var-range">0 → 100</td>          <td>Sharpness of the upcoming track corner six waypoints ahead. 0 = straight, 100 = hairpin.</td></tr>
+                        <tr><td class="var-name">health</td>       <td class="var-range">0 → 100 %</td>        <td>AI car's HP as a percentage of its maximum (<code>armor × 15</code>).</td></tr>
+                        <tr><td class="var-name">gap</td>          <td class="var-range">−100 → +100</td>      <td>Signed track-progress gap. Negative = AI is behind the player, positive = AI is ahead.</td></tr>
+                        <tr><td class="var-name">powerup</td>      <td class="var-range">0 or 100</td>         <td>Boolean-as-fuzzy: 0 when the AI has no powerup, 100 when it's holding one.</td></tr>
+                    </tbody>
+                </table>
+
                 <div class="docs-mf-grid" id="docsInputsMF"></div>
             </section>
 
             <section class="docs-section">
                 <h2>Output Variables &amp; Membership Functions</h2>
-                <p>The engine produces five outputs. For each output, multiple sets can be "activated" by different firing rules; the activation strengths are aggregated by max() and the resulting clipped membership curve is then defuzzified.</p>
+                <p>The engine produces five outputs. For each output, multiple sets can be "activated" by different firing rules; the activation strengths are aggregated by <code>max()</code> and the resulting clipped membership curve is then defuzzified to a single crisp number.</p>
+
+                <table class="docs-var-table">
+                    <thead>
+                    <tr><th>Output</th><th>X axis (universe)</th><th>How it's used by the controller</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="var-name">throttle</td>    <td class="var-range">0 → 100 %</td>    <td>Pedal position. Scaled by rubber-banding (see below) before being applied to the car.</td></tr>
+                        <tr><td class="var-name">brake</td>       <td class="var-range">0 → 100 %</td>    <td>Pedal position. At very low speed the car physics interprets brake as reverse acceleration.</td></tr>
+                        <tr><td class="var-name">steering</td>    <td class="var-range">−100 → +100</td>  <td>Steering magnitude only. The controller picks the sign from the angle to the look-ahead waypoint.</td></tr>
+                        <tr><td class="var-name">aggression</td>  <td class="var-range">0 → 100</td>     <td>Behaviour dial used by the powerup gate. Not directly applied to the car.</td></tr>
+                        <tr><td class="var-name">use_powerup</td> <td class="var-range">0 → 100</td>     <td>Urgency score. Whether the held powerup actually fires is gated <em>per category</em> (see below).</td></tr>
+                    </tbody>
+                </table>
+
                 <div class="docs-mf-grid" id="docsOutputsMF"></div>
             </section>
 
             <section class="docs-section">
                 <h2>Rule Base (33 rules)</h2>
-                <p>Rules use <em>min()</em> for AND. Multiple rules can target the same output; their activations are aggregated by <em>max()</em>.</p>
+                <p>Rules use <code>min()</code> for the AND between antecedents. Multiple rules can target the same output set; their activations are aggregated by <code>max()</code> before defuzzification.</p>
                 <div class="docs-rule-table" id="docsRuleTable"></div>
             </section>
 
             <section class="docs-section">
                 <h2>Defuzzification — Centroid Method</h2>
-                <p>For each output variable, the engine samples the universe at 101 evenly-spaced points. At each sample point, the aggregated output membership is the max() across all activated sets — each clipped at its firing strength (Mamdani inference).</p>
+                <p>For each output variable, the engine samples the universe at 101 evenly-spaced points. At each sample point, the aggregated output membership is the <code>max()</code> across all activated sets — each clipped at its firing strength (Mamdani inference).</p>
                 <p>The crisp output is then the centroid (center of gravity) of that aggregated curve:</p>
                 <p style="text-align:center; font-family:'Consolas','Monaco',monospace; color: var(--neon-cyan); font-size: 1.1rem;">crisp = Σ(x · μ(x)) / Σ(μ(x))</p>
-                <p>This is what becomes the AI's throttle (0–100), brake (0–100), steering (-100…+100), aggression (0–100), and use_powerup (0–100). For <code>use_powerup</code>, anything above 70 makes the controller actually fire the held powerup.</p>
+                <p>This is what becomes the AI's <code>throttle</code> (0–100), <code>brake</code> (0–100), <code>steering</code> (−100…+100), <code>aggression</code> (0–100), and <code>use_powerup</code> (0–100).</p>
+                <p>For the <code>use_powerup</code> output the crisp number is <em>not</em> compared against a single global threshold — the firing decision is made per powerup category by <code>PowerupManager.shouldAIUsePowerup()</code>:</p>
+                <ul>
+                    <li><strong>Aggressive</strong> (missile, oil, EMP, tornado): <code>use_powerup &gt; 55</code> <em>and</em> the AI is losing <em>and</em> the player is either close or far enough ahead to be worth targeting.</li>
+                    <li><strong>Defensive — shield</strong>: <code>use_powerup &gt; 50</code> <em>and</em> (low HP or close-contact-while-losing).</li>
+                    <li><strong>Defensive — repair</strong>: fires below 45 % HP regardless of fuzzy score.</li>
+                    <li><strong>Speed</strong> (boost, nitro): <code>use_powerup &gt; 50</code> on a near-straight while losing, or <code>&gt; 85</code> as a panic-fire.</li>
+                </ul>
+            </section>
+
+            <section class="docs-section">
+                <h2>Behaviour Layered on Top of Fuzzy Outputs</h2>
+                <p>The fuzzy engine produces the AI's <em>intent</em>. Three deterministic behaviours wrap that intent inside <code>js/ai.js</code> before it reaches the car:</p>
+                <ul>
+                    <li><strong>Per-tick noise</strong> — outputs are jittered by ±noise% (Rookie ±20%, Racer ±10%, Champion ±3%) to model human imperfection.</li>
+                    <li><strong>Rubber-banding</strong> — throttle is multiplied by a difficulty-dependent factor that grows when the AI is behind the player and shrinks slightly when it's far ahead. Strength is set by the chosen difficulty.</li>
+                    <li><strong>Stuck-against-wall auto-reverse</strong> — if the AI tries to throttle forward but barely moves for 0.7 s, the controller overrides the fuzzy outputs with a 700 ms burst of full brake (which the car physics interprets as reverse acceleration at low speed) with inverted steering at 60 % magnitude. After the burst the fuzzy controller resumes normally.</li>
+                    <li><strong>Champion-only: predict player powerup</strong> — when the player picks up a powerup, a Champion-difficulty AI holding a shield deploys it pre-emptively 400–1200 ms later.</li>
+                </ul>
+                <p>The player has the same brake-becomes-reverse behaviour: hold <code>▼</code> while moving forward to brake, keep holding once stopped to reverse out (capped at 40 % of top speed).</p>
             </section>
         </div>
     </div>
@@ -257,6 +305,22 @@
             ruleHost.innerHTML = html;
         }
 
+        // Per-variable X-axis title shown beneath each chart so the
+        // chart units are always self-describing.
+        const AXIS_TITLES = {
+            distance:     'distance — px from AI to player',
+            player_speed: 'player_speed — % of player’s top speed',
+            corner:       'corner — sharpness (0 = straight, 100 = hairpin)',
+            health:       'health — % of AI’s max HP',
+            gap:          'gap — − behind  /  + ahead',
+            powerup:      'powerup — 0 = empty slot, 100 = holding one',
+            throttle:     'throttle — pedal %',
+            brake:        'brake — pedal %',
+            steering:     'steering — left ←   → right',
+            aggression:   'aggression — low → maximum',
+            use_powerup:  'use_powerup — urgency score'
+        };
+
         function buildMFCard(varName, schema, engineVar) {
             const card = document.createElement('div');
             card.className = 'docs-mf-card';
@@ -282,42 +346,98 @@
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 const W = rect.width, H = rect.height;
 
-                // Axes
-                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = 1;
-                for (let y = 0; y <= 1; y += 0.25) {
-                    const py = H - y * H;
-                    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
-                }
-
-                // Each set's curve
+                // Plot-area margins reserve room for axis labels and the
+                // X-axis title underneath the chart.
+                const ML = 32, MR = 8, MT = 8, MB = 32;
+                const PW = W - ML - MR;   // plot width
+                const PH = H - MT - MB;   // plot height
                 const [min, max] = schema.range;
+
+                // ---- Y axis: μ (membership 0..1) ----
+                ctx.font = '9px "Consolas", "Monaco", monospace';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+                ctx.lineWidth = 1;
+                const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
+                yTicks.forEach(yv => {
+                    const py = MT + (1 - yv) * PH;
+                    ctx.beginPath();
+                    ctx.moveTo(ML, py);
+                    ctx.lineTo(ML + PW, py);
+                    ctx.stroke();
+                    // Major ticks get a number; quarter ticks just get the line.
+                    if (yv === 0 || yv === 0.5 || yv === 1) {
+                        ctx.fillText(yv.toFixed(1), ML - 4, py);
+                    }
+                });
+                // Y axis title (μ)
+                ctx.save();
+                ctx.translate(8, MT + PH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '10px "Consolas", "Monaco", monospace';
+                ctx.fillText('μ', 0, 0);
+                ctx.restore();
+
+                // ---- X axis baseline ----
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.beginPath();
+                ctx.moveTo(ML, MT + PH);
+                ctx.lineTo(ML + PW, MT + PH);
+                ctx.stroke();
+                // Y axis spine
+                ctx.beginPath();
+                ctx.moveTo(ML, MT);
+                ctx.lineTo(ML, MT + PH);
+                ctx.stroke();
+
+                // ---- Each set's membership curve ----
                 setNames.forEach((setName, i) => {
                     const fn = engineVar.sets[setName];
                     const color = setColors[i % setColors.length];
                     ctx.strokeStyle = color;
                     ctx.shadowColor = color;
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = 6;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     for (let p = 0; p <= 100; p++) {
                         const x = min + (max - min) * (p / 100);
                         const mu = fn(x);
-                        const px = (p / 100) * W;
-                        const py = H - mu * H;
+                        const px = ML + (p / 100) * PW;
+                        const py = MT + (1 - mu) * PH;
                         if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
                     }
                     ctx.stroke();
                 });
                 ctx.shadowBlur = 0;
 
-                // x-axis labels
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                ctx.font = '9px monospace';
+                // ---- X axis tick labels: min / midpoint / max ----
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+                ctx.font = '9px "Consolas", "Monaco", monospace';
+                ctx.textBaseline = 'top';
+                const fmt = (n) => {
+                    // Compact integer; show sign for signed ranges; one decimal for non-integers.
+                    if (Math.abs(n) >= 1 && Number.isInteger(n)) return (n > 0 && min < 0 ? '+' : '') + n;
+                    return (n > 0 && min < 0 ? '+' : '') + (Math.round(n * 10) / 10);
+                };
+                const mid = (min + max) / 2;
                 ctx.textAlign = 'left';
-                ctx.fillText(min + '', 2, H - 2);
+                ctx.fillText(fmt(min), ML, MT + PH + 3);
+                ctx.textAlign = 'center';
+                ctx.fillText(fmt(mid), ML + PW / 2, MT + PH + 3);
                 ctx.textAlign = 'right';
-                ctx.fillText(max + '', W - 2, H - 2);
+                ctx.fillText(fmt(max), ML + PW, MT + PH + 3);
+
+                // ---- X axis title (variable name + units) ----
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                ctx.font = '10px "Consolas", "Monaco", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(AXIS_TITLES[varName] || varName, ML + PW / 2, H - 2);
             });
             return card;
         }
