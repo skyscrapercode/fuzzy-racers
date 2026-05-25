@@ -52,6 +52,12 @@ class AIController {
         this._lastPlayerSlot = null;
         this._playerArmedAt = 0;
 
+        // Stuck-against-wall detection. If the AI tries to throttle but
+        // barely moves for long enough, we override fuzzy output with a
+        // brief reverse burst so the car can back out of the wall.
+        this._stuckTimer  = 0;     // seconds of "throttling but not moving"
+        this._reverseUntil = 0;    // ms timestamp; while now < this, apply brake
+
         // Cumulative stats for the post-race summary
         this.stats = {
             ticks: 0,
@@ -72,8 +78,31 @@ class AIController {
             this.lastTickAt = now;
             this._tick(raceState);
         }
+        this._detectStuck(dt, now);
         this._applyOutputs(raceState);
         this._tryUsePowerup(raceState);
+    }
+
+    /**
+     * Detect that the AI is wedged against a wall (high throttle, near-zero
+     * speed) and trigger a 700 ms reverse burst when the condition has held
+     * for ~0.7 seconds. Resets as soon as the car is moving again. The
+     * actual reverse motion is applied in _applyOutputs() by holding brake
+     * instead of throttle.
+     */
+    _detectStuck(dt, now) {
+        const wantingForward = (this.cached.throttle || 0) > 25;
+        const speed = this.car.speed || 0;
+        if (now < this._reverseUntil) return;  // already reversing
+        if (wantingForward && speed < 25) {
+            this._stuckTimer += dt;
+            if (this._stuckTimer >= 0.7) {
+                this._reverseUntil = now + 700;
+                this._stuckTimer = 0;
+            }
+        } else {
+            this._stuckTimer = 0;
+        }
     }
 
     /** Heavy work: build fuzzy inputs, run inference, cache outputs. */
@@ -162,6 +191,18 @@ class AIController {
         const fuzzyMag = Math.abs(out.steering || 0) / 100;
         const sign = geoMag >= 0 ? 1 : -1;
         const steer = sign * Math.min(1, Math.max(Math.abs(geoMag), fuzzyMag * 0.4));
+
+        // Reverse override: when stuck against a wall, hold brake (which
+        // triggers reverse at low speed in car.js) and steer AWAY from the
+        // intended racing line so we don't immediately re-collide. We invert
+        // the steer sign so the car backs out at an angle.
+        if (performance.now() < this._reverseUntil) {
+            car.applySteering(-steer * 0.6);
+            car.applyThrottle(0);
+            car.applyBrake(1);
+            return;
+        }
+
         car.applySteering(steer);
 
         // Throttle: rubber-banded.

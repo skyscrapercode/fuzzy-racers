@@ -845,12 +845,32 @@ class Car {
         this.vx += fdx * accel * dt;
         this.vy += fdy * accel * dt;
 
-        // ----- Brake (opposite to velocity) -----
+        // Signed forward speed: positive when moving along heading,
+        // negative when reversing. Used by brake/reverse + grip.
+        const forwardSpeed = this.vx * fdx + this.vy * fdy;
+
+        // ----- Brake / reverse -----
+        // ArrowDown / brake input behaves like a real arcade racer:
+        //   - Moving forward → decelerate (brake against velocity).
+        //   - Stopped or already reversing → accelerate backwards along the
+        //     car's heading. Reverse uses ~60% of forward acceleration and is
+        //     capped at ~40% of forward top speed (see cap block below).
+        // This lets the player (and AI) back out after hitting a wall.
         const v = Math.hypot(this.vx, this.vy);
-        if (this._brake > 0 && v > 0.1) {
-            const decel = Math.min(this.brakingPower * this._brake * dt, v);
-            this.vx -= (this.vx / v) * decel;
-            this.vy -= (this.vy / v) * decel;
+        if (this._brake > 0) {
+            if (forwardSpeed > 30) {
+                // Brake against velocity vector.
+                const decel = Math.min(this.brakingPower * this._brake * dt, v);
+                if (v > 0.1) {
+                    this.vx -= (this.vx / v) * decel;
+                    this.vy -= (this.vy / v) * decel;
+                }
+            } else {
+                // Reverse: accelerate opposite to heading.
+                const reverseAccel = this.acceleration * 0.6 * this._brake;
+                this.vx -= fdx * reverseAccel * dt;
+                this.vy -= fdy * reverseAccel * dt;
+            }
         }
 
         // ----- Drag (so cars coast to a stop) -----
@@ -864,22 +884,32 @@ class Car {
         const speedFactor = Math.min(1, v / 80); // need some speed to steer
         this.angle += this._steerInput * this.turnRate * speedFactor * dt;
 
-        // ----- Grip: blend velocity toward heading direction -----
-        // Higher tire/handling → more grip → less lateral slip.
+        // ----- Grip: blend velocity toward the car's primary axis -----
+        // Higher tire/handling → more grip → less lateral slip. The "primary
+        // axis" sign respects the current direction of travel so reversing
+        // doesn't get yanked back forward by the grip pull.
         const v2 = Math.hypot(this.vx, this.vy);
         if (v2 > 0.5) {
-            const tgtX = Math.cos(this.angle) * v2;
-            const tgtY = Math.sin(this.angle) * v2;
+            const sign = forwardSpeed >= 0 ? 1 : -1;
+            const tgtX = Math.cos(this.angle) * v2 * sign;
+            const tgtY = Math.sin(this.angle) * v2 * sign;
             const gripRate = 1 - Math.pow(0.02, dt); // ≈ 98%/s pull toward heading
             this.vx += (tgtX - this.vx) * gripRate;
             this.vy += (tgtY - this.vy) * gripRate;
         }
 
-        // ----- Cap to max speed (boost 1.5×, nitro 1.8×) -----
-        const capped = nitro ? this.maxSpeed * 1.8 : (boosted ? this.maxSpeed * 1.5 : this.maxSpeed);
+        // ----- Cap top speed (forward: boost 1.5× / nitro 1.8× / base 1×;
+        //                       reverse: 40% of base) -----
+        const forwardCap = nitro ? this.maxSpeed * 1.8
+                         : boosted ? this.maxSpeed * 1.5
+                         : this.maxSpeed;
+        const reverseCap = this.maxSpeed * 0.4;
         const finalV = Math.hypot(this.vx, this.vy);
-        if (finalV > capped) {
-            const s = capped / finalV;
+        // Use the sign of forwardSpeed AFTER brake/reverse was applied
+        const finalFwd = this.vx * fdx + this.vy * fdy;
+        const cap = finalFwd >= 0 ? forwardCap : reverseCap;
+        if (finalV > cap) {
+            const s = cap / finalV;
             this.vx *= s;
             this.vy *= s;
         }
