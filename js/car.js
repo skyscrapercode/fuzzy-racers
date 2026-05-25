@@ -683,7 +683,10 @@ class Car {
         this.acceleration = 100 + final.accel    * 20;   // px/s²
         this.brakingPower = 220 + final.accel    * 14;   // px/s² when braking
         this.turnRate     = 1.0 + final.handling * 0.25; // rad/s at full grip
-        this.maxHealth    = Math.max(10, final.armor * 10);
+        // Armor * 15 so that a full 3-lap race has comfortable HP headroom —
+        // explosion is reserved for missile hits and repeated heavy
+        // collisions, not normal scraping.
+        this.maxHealth    = Math.max(30, final.armor * 15);
 
         // Pose
         this.x      = config.x || 0;
@@ -710,6 +713,12 @@ class Car {
         this.spinUntil     = 0;  // forced rotation (tornado, oil)
         this.oilDropUntil  = 0;  // currently dripping oil onto track
         this.oilDropTimer  = 0;  // accumulator for spacing oil patches
+
+        // Explosion / wreck state. When health hits 0 the car explodes and
+        // becomes a non-driveable wreck — race.js reads `exploded` to end the
+        // race and award the win to the other car.
+        this.exploded = false;
+        this.explodedAt = 0;
 
         // Race state (filled in by race manager)
         this.lap = 0;
@@ -770,15 +779,20 @@ class Car {
 
     // ------------ Damage ------------
 
-    /** Apply damage. While shielded, damage is fully absorbed. */
+    /** Apply damage. While shielded, damage is fully absorbed. Health
+     *  reaching 0 triggers the car's explosion and marks it as wrecked. */
     takeDamage(amount) {
         if (amount <= 0) return;
+        if (this.exploded) return;
         if (this.isShielded()) return;
         this.health -= amount;
         this.lastImpactTime = performance.now();
         if (this.health <= 0) {
             this.health = 0;
-            // Don't actually kill — health 0 just means a sluggish car for arcade feel.
+            if (!this.exploded) {
+                this.exploded = true;
+                this.explodedAt = performance.now();
+            }
         }
     }
 
@@ -792,6 +806,19 @@ class Car {
         if (dt <= 0) return;
 
         const now = performance.now();
+
+        // Wrecked: ignore inputs, decelerate to a stop, no further physics.
+        if (this.exploded) {
+            this._throttle = this._brake = this._steerInput = 0;
+            const k = Math.pow(0.15, dt); // strong drag so the wreck slides to a halt
+            this.vx *= k;
+            this.vy *= k;
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.speed = Math.hypot(this.vx, this.vy);
+            return;
+        }
+
         const stunned  = now < this.stunUntil;
         const spinning = now < this.spinUntil;
 
@@ -931,9 +958,13 @@ class Car {
         this.vx *= 0.55;
         this.vy *= 0.55;
 
-        // Damage (scaled by impact velocity).
-        const impact = Math.min(8, Math.abs(vDotN) * 0.025);
-        this.takeDamage(impact);
+        // Damage (scaled by impact velocity). Glances (<60 px/s impact) deal
+        // no damage so the AI doesn't bleed HP just by scraping curbs.
+        const impactVel = Math.abs(vDotN);
+        if (impactVel > 60) {
+            const dmg = Math.min(6, (impactVel - 60) * 0.025);
+            this.takeDamage(dmg);
+        }
         return true;
     }
 
@@ -968,10 +999,14 @@ class Car {
         other.vx -= dv * nx * restitution;
         other.vy -= dv * ny * restitution;
 
-        // Damage proportional to closing speed.
-        const dmg = Math.max(0.5, Math.abs(dv) * 0.06);
-        this.takeDamage(dmg);
-        other.takeDamage(dmg);
+        // Damage proportional to closing speed. Light bumps (<80 px/s
+        // closing) deal nothing — only meaningful side-swipes draw blood.
+        const closing = Math.abs(dv);
+        if (closing > 80) {
+            const dmg = (closing - 80) * 0.04;
+            this.takeDamage(dmg);
+            other.takeDamage(dmg);
+        }
         return true;
     }
 

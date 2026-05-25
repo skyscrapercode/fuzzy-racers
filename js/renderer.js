@@ -53,17 +53,26 @@ function _sampleClosedCatmullRom(controlPoints, samplesPerSegment) {
 // ============================================================
 
 const TrackControlPoints = {
-    // City Circuit — boxy with a chicane in the right side
+    // City Circuit — rounded rectangle with a chicane bite on the right
+    // matching the garage minimap. Collinear intermediate points keep the
+    // long straights from bowing under Catmull-Rom smoothing. The chicane
+    // arms are placed 320 px apart (vs 156 px road width) so the road has
+    // ~80 px of clearance on each side of the bite — comfortable to drive.
     city: [
-        { x: 300,  y: 250  },
-        { x: 1500, y: 250  },
-        { x: 1600, y: 450  },
-        { x: 1150, y: 500  },
-        { x: 1150, y: 700  },
-        { x: 1600, y: 750  },
-        { x: 1500, y: 950  },
-        { x: 300,  y: 950  },
-        { x: 200,  y: 600  }
+        { x: 300,  y: 280  },
+        { x: 700,  y: 280  },   // top straight (collinear keeps the spline flat)
+        { x: 1100, y: 280  },
+        { x: 1500, y: 280  },
+        { x: 1700, y: 470  },   // top-right corner
+        { x: 1380, y: 530  },   // chicane bite — upper inward turn
+        { x: 1380, y: 850  },   // chicane bite — lower inward turn (320 px apart)
+        { x: 1700, y: 910  },   // back to right after the bite
+        { x: 1500, y: 1050 },   // bottom-right corner
+        { x: 1100, y: 1050 },   // bottom straight
+        { x: 700,  y: 1050 },
+        { x: 300,  y: 1050 },
+        { x: 100,  y: 870  },   // bottom-left corner
+        { x: 100,  y: 470  }    // left straight
     ],
 
     // Desert Highway — long stretched oval, mild kinks
@@ -323,6 +332,43 @@ const Renderer = {
         ctx.save();
         ctx.translate(car.x, car.y);
         ctx.rotate(car.angle);
+
+        // Wreck mode: blackened scorched silhouette + permanent thick smoke.
+        if (car.exploded) {
+            // Thick black smoke around the wreck
+            const t = (performance.now() - car.explodedAt) / 1000;
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#222';
+            for (let i = 0; i < 6; i++) {
+                const offX = (Math.random() - 0.5) * 50;
+                const offY = (Math.random() - 0.5) * 36;
+                ctx.beginPath();
+                ctx.arc(offX, offY, 10 + Math.random() * 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Charred frame: dark sedan silhouette
+            drawCarTopDown(ctx, {
+                shape: car._shape || 'sedan',
+                paint: '#3a3030',
+                accent: '#1a1a1a',
+                pattern: 'solid',
+                bodyKit: 'stock',
+                glow: false
+            });
+            // Red-hot flicker on top of the wreck for the first 2 seconds
+            if (t < 2) {
+                ctx.globalAlpha = 0.45 * (1 - t / 2) * (0.5 + 0.5 * Math.sin(performance.now() / 60));
+                ctx.fillStyle = '#ff6611';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            ctx.restore();
+            return;
+        }
 
         // Damaged smoke (rendered before body so it sits below)
         if (car.health <= car.maxHealth * 0.25) {
@@ -640,14 +686,16 @@ function drawTrackMinimap(ctx, w, h, trackId, accent) {
     ctx.lineCap = 'round';
 
     if (trackId === 'city') {
+        // Matches the in-race city-circuit shape: rounded rectangle with a
+        // chicane bite on the right side (between y=35% and y=72%).
         const path = (W) => {
             ctx.beginPath();
             ctx.moveTo(pad, pad);
             ctx.lineTo(w - pad, pad);
-            ctx.lineTo(w - pad, h * 0.45);
-            ctx.lineTo(w * 0.65, h * 0.45);
-            ctx.lineTo(w * 0.65, h * 0.65);
-            ctx.lineTo(w - pad, h * 0.65);
+            ctx.lineTo(w - pad, h * 0.35);
+            ctx.lineTo(w * 0.62, h * 0.42);
+            ctx.lineTo(w * 0.62, h * 0.65);
+            ctx.lineTo(w - pad, h * 0.72);
             ctx.lineTo(w - pad, h - pad);
             ctx.lineTo(pad, h - pad);
             ctx.closePath();

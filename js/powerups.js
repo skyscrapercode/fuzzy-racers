@@ -45,8 +45,8 @@ const PowerupTypes = [
         icon: '🎯',
         color: '#ffd400',
         category: 'aggressive',
-        damage: 30,
-        desc: 'Homing rocket at car ahead'
+        damage: 15,
+        desc: 'Homing rocket — 15 HP damage'
     },
     {
         id: 'oil',
@@ -299,7 +299,7 @@ class Projectile {
         this.angle = opts.angle || 0;
         this.target = opts.target;        // car to home toward
         this.owner = opts.owner;
-        this.damage = opts.damage || 30;
+        this.damage = opts.damage || 15;
         this.life = 4.5;                  // seconds until self-destruct
         this.speed = 520;                 // px/s
         this.alive = true;

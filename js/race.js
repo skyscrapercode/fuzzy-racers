@@ -211,10 +211,27 @@ const Race = {
             <span class="fi-hint">[F] close</span>
         </div>`;
 
-        // Inputs
+        // Inputs — recomputed live each refresh so corner and health always
+        // reflect the current car state, not the stale last-fuzzy-tick snapshot.
+        // (Corner in particular sits near 0 for long straights and health only
+        // changes on damage, so both appeared frozen when read from dbg.inputs.)
+        const _N    = this.track.waypoints.length;
+        const _la   = ctl.lookAheadCorner || 6;
+        const _cidx = (_N > 0) ? (this.ai.waypointIndex + _la) % _N : 0;
+        const _wp   = this.track.waypoints[_cidx];
+        const liveInputs = {
+            distance:     Math.min(1000, Math.hypot(this.player.x - this.ai.x,
+                                                    this.player.y - this.ai.y)),
+            player_speed: Math.min(100, (this.player.speed /
+                                         Math.max(1, this.player.maxSpeed)) * 100),
+            corner:       _wp ? _wp.sharpness : 0,
+            health:       (this.ai.health / Math.max(1, this.ai.maxHealth)) * 100,
+            gap:          -this._computeGap(),   // negative = AI losing
+            powerup:      this.ai.powerupSlot ? 100 : 0
+        };
         html += '<section class="fi-section"><h4>Crisp Inputs</h4>';
-        for (const k in dbg.inputs) {
-            html += barRow(k, dbg.inputs[k], INPUT_RANGES[k] || { min: 0, max: 100 });
+        for (const k in liveInputs) {
+            html += barRow(k, liveInputs[k], INPUT_RANGES[k] || { min: 0, max: 100 });
         }
         html += '</section>';
 
@@ -370,6 +387,28 @@ const Race = {
             c._stats.lastHealth = c.health;
         }
 
+        // --- Explosion detection ---
+        // When a car's health hits 0 it explodes. Spawn a dramatic particle
+        // burst the first frame, then end the race ~1.2s later so the
+        // explosion is visible before the win/lose overlay appears.
+        for (const c of this.cars) {
+            if (c.exploded && !c._explosionTriggered) {
+                c._explosionTriggered = true;
+                this._spawnExplosion(c);
+                // Winner is locked on the first explosion only — if both
+                // cars die in the same frame, whoever exploded first still
+                // hands the win to the other.
+                if (!this._explosionWinner) {
+                    this._explosionWinner = (c === this.player) ? this.ai : this.player;
+                    this._explosionEndAt = performance.now() + 1200;
+                }
+            }
+        }
+        if (this._explosionEndAt && performance.now() >= this._explosionEndAt && this.phase === 'racing') {
+            this._explosionEndAt = 0;
+            this._finish(this._explosionWinner);
+        }
+
         // --- Lap accounting ---
         // A lap only counts when the car has physically driven through the
         // MIDDLE of the track (lapProgress in [0.35, 0.65]) and then wraps
@@ -404,6 +443,34 @@ const Race = {
 
         // --- Powerups + particles ---
         PowerupManager.update(dt, this.cars);
+    },
+
+    _spawnExplosion(car) {
+        const ps = PowerupManager.particles;
+        // Big central blast + a few smaller ones offset to feel chunkier
+        Particles.spawnExplosion(ps, car.x, car.y, '#ff8800');
+        Particles.spawnExplosion(ps, car.x + 18, car.y - 12, '#ffd400');
+        Particles.spawnExplosion(ps, car.x - 14, car.y + 10, '#ff3355');
+        // Lots of sparks
+        Particles.spawnSparks(ps, car.x, car.y, 30, '#ffd400');
+        Particles.spawnSparks(ps, car.x, car.y, 20, '#ff3355');
+        // Persistent smoke plume — keep spawning for ~2s so the wreck smokes.
+        const start = performance.now();
+        const interval = setInterval(() => {
+            if (performance.now() - start > 2200) { clearInterval(interval); return; }
+            for (let i = 0; i < 4; i++) {
+                ps.push({
+                    x: car.x + (Math.random() - 0.5) * 30,
+                    y: car.y + (Math.random() - 0.5) * 24,
+                    vx: (Math.random() - 0.5) * 30,
+                    vy: -20 - Math.random() * 40,
+                    life: 1.6, maxLife: 1.6,
+                    color: '#1a1a1a',
+                    size: 8 + Math.random() * 6,
+                    type: 'smoke'
+                });
+            }
+        }, 90);
     },
 
     _computeGap() {
@@ -771,11 +838,27 @@ const Race = {
         ctx.font = '900 120px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(playerWon ? 'YOU WIN!' : 'DEFEATED', W/2, H/2 - 20);
+        // Explosion-based win/loss gets a different headline.
+        const playerExploded = this.player.exploded;
+        const aiExploded = this.ai.exploded;
+        let headline;
+        if (playerExploded)      headline = 'WRECKED';
+        else if (aiExploded)     headline = 'KO!';
+        else                     headline = playerWon ? 'YOU WIN!' : 'DEFEATED';
+        ctx.fillText(headline, W/2, H/2 - 30);
+
+        // Subtitle on explosion to make the cause clear
+        if (playerExploded || aiExploded) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = color;
+            ctx.font = '900 30px sans-serif';
+            const sub = playerExploded ? 'Your car was destroyed' : 'Opponent destroyed';
+            ctx.fillText(sub, W/2, H/2 + 36);
+        }
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#fff';
         ctx.font = '700 18px monospace';
-        ctx.fillText('redirecting to results…', W/2, H/2 + 70);
+        ctx.fillText('redirecting to results…', W/2, H/2 + 90);
         ctx.restore();
     }
 };

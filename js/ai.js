@@ -65,6 +65,8 @@ class AIController {
      * own schedule, then applies the cached outputs every frame.
      */
     update(dt, raceState) {
+        // Wrecked car: no fuzzy ticks, no input, no powerup usage.
+        if (this.car.exploded) return;
         const now = performance.now();
         if (now - this.lastTickAt >= this.params.tickMs) {
             this.lastTickAt = now;
