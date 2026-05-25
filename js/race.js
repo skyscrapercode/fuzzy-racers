@@ -543,7 +543,12 @@ const Race = {
         const W = window.innerWidth;
         const H = window.innerHeight;
 
-        ctx.fillStyle = '#04050a';
+        // Clear with the track's terrain colour instead of pure black, so
+        // if the world-space floor ever fails to cover the screen edge the
+        // seam is invisible (grass-on-grass / sand-on-sand) instead of
+        // showing props "floating in the black".
+        const tStyle = this.track && this.track.style;
+        ctx.fillStyle = (tStyle && (tStyle.grass || tStyle.sand)) || '#04050a';
         ctx.fillRect(0, 0, W, H);
 
         // Camera: centered on player, rotated so player faces "up".

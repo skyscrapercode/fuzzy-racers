@@ -249,10 +249,14 @@ const Renderer = {
         if (!geom) return;
         const { outer, inner, waypoints, style, start } = geom;
 
-        // 1. Off-track fill (grass / sand) — fills the rectangle around the
-        //    track first, then we lay the road on top.
+        // 1. Off-track fill (grass / sand) — generously larger than the track
+        //    bounds so the floor always extends past the screen edges in
+        //    every direction. At any viewport size + camera rotation the
+        //    visible world rectangle is at most ~2200 px diagonal from the
+        //    player; padding by 3000 keeps the terrain visible even when
+        //    racing right at the bounds.
         ctx.fillStyle = style.grass || style.sand || '#0a1a0a';
-        const pad = 200;
+        const pad = 3000;
         ctx.fillRect(geom.bounds.minX - pad, geom.bounds.minY - pad,
                      (geom.bounds.maxX - geom.bounds.minX) + pad * 2,
                      (geom.bounds.maxY - geom.bounds.minY) + pad * 2);
