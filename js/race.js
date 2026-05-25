@@ -554,6 +554,10 @@ const Race = {
         ctx.translate(-this.player.x, -this.player.y);
 
         Renderer.drawTrack(ctx, this.track);
+        // Track-themed scenery (city buildings, desert cacti/rocks, mountain
+        // pines) sits between the track and the gameplay layer. camRot is
+        // passed so each prop can counter-rotate to stay upright on screen.
+        Renderer.drawTrackProps(ctx, this.track, camRot);
         PowerupManager.draw(ctx);
         for (const c of this.cars) Renderer.drawCar(ctx, c, c.customization);
 

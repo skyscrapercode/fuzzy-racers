@@ -323,6 +323,256 @@ const Renderer = {
     },
 
     /**
+     * Draw decorative track-themed props (buildings / rocks / pines + emoji
+     * accents) scattered through the off-track area. Called after drawTrack
+     * so props sit on top of the grass/sand, but before cars/powerups so the
+     * gameplay layer stays on top.
+     *
+     * Each prop is counter-rotated by -camRot so emojis and architectural
+     * shapes stay upright on screen even as the camera rotates with the
+     * player heading. The prop list is computed once (per geom) and cached
+     * on the geom object so we don't pay the placement cost every frame.
+     *
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {Object} geom       output of buildTrackGeometry()
+     * @param {number} camRot     the rotation currently applied to ctx by
+     *                            the camera (-player.angle - π/2)
+     */
+    drawTrackProps(ctx, geom, camRot) {
+        if (!geom) return;
+        if (!geom._propsCache) {
+            geom._propsCache = this._buildTrackPropsList(geom);
+        }
+        for (const p of geom._propsCache) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(-camRot);     // undo camera rotation → upright on screen
+            switch (p.type) {
+                case 'building': this._drawBuildingProp(ctx, p); break;
+                case 'rock':     this._drawRockProp    (ctx, p); break;
+                case 'pine':     this._drawPineProp    (ctx, p); break;
+                case 'emoji':    this._drawEmojiProp   (ctx, p); break;
+            }
+            ctx.restore();
+        }
+    },
+
+    /** Deterministic prop placement. Seeded per trackId so each track has a
+     *  stable scenery layout. Sample N candidate points across an expanded
+     *  bounding box; accept only those at least halfRoadWidth + 50 away from
+     *  every waypoint so props never sit on the road. */
+    _buildTrackPropsList(geom) {
+        const trackId = geom.id;
+        const seedMap = { city: 71013, desert: 42089, mountain: 91077 };
+        let seed = (seedMap[trackId] || 12345) | 0;
+        const rand = () => {
+            seed = (seed * 9301 + 49297) | 0;
+            seed = ((seed % 233280) + 233280) % 233280;
+            return seed / 233280;
+        };
+
+        const b = geom.bounds;
+        const pad = 260;
+        const minX = b.minX - pad, maxX = b.maxX + pad;
+        const minY = b.minY - pad, maxY = b.maxY + pad;
+        const safe = geom.halfRoadWidth + 50;
+        const safe2 = safe * safe;
+
+        const props = [];
+        const SAMPLES = 220;
+        for (let i = 0; i < SAMPLES; i++) {
+            const x = minX + rand() * (maxX - minX);
+            const y = minY + rand() * (maxY - minY);
+            // Distance² to the nearest centerline waypoint
+            let nearest2 = Infinity;
+            for (const wp of geom.waypoints) {
+                const dx = wp.x - x, dy = wp.y - y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 < nearest2) nearest2 = d2;
+            }
+            if (nearest2 < safe2) continue;
+
+            const roll = rand();
+            if (trackId === 'city') {
+                if (roll < 0.55) {
+                    // Drawn building (the dominant prop type for the city)
+                    props.push({
+                        type: 'building', x, y,
+                        w: 28 + rand() * 32,
+                        h: 55 + rand() * 90,
+                        color: ['#2a3045','#1f2435','#3a4055','#232a38','#2c3142'][Math.floor(rand()*5)],
+                        winSeed: (rand() * 1e6) | 0
+                    });
+                } else {
+                    // Emoji accents (urban dressings)
+                    const choices = ['🏢','🏬','🏪','🏨','🚧','🚦','🚏','🌆','🏗️','🏛️'];
+                    props.push({
+                        type: 'emoji', x, y,
+                        emoji: choices[Math.floor(rand() * choices.length)],
+                        size: 30 + rand() * 26
+                    });
+                }
+            } else if (trackId === 'desert') {
+                if (roll < 0.35) {
+                    // Drawn rock pile
+                    props.push({
+                        type: 'rock', x, y,
+                        r: 11 + rand() * 18,
+                        color: ['#6b5a3a','#7d6a4a','#8a7a5a','#5a4a2a'][Math.floor(rand()*4)],
+                        shapeSeed: (rand() * 1e6) | 0
+                    });
+                } else {
+                    // Cacti are common; skulls / scorpions / snakes sprinkle character
+                    const choices = ['🌵','🌵','🌵','🪨','💀','🦂','🐍','🏜️','🌅'];
+                    props.push({
+                        type: 'emoji', x, y,
+                        emoji: choices[Math.floor(rand() * choices.length)],
+                        size: 30 + rand() * 22
+                    });
+                }
+            } else if (trackId === 'mountain') {
+                if (roll < 0.55) {
+                    // Drawn pine — stacked-triangle classic
+                    props.push({
+                        type: 'pine', x, y,
+                        h: 36 + rand() * 32,
+                        w: 22 + rand() * 14,
+                        tint: rand() > 0.5 ? '#2a4a2a' : '#356b35'
+                    });
+                } else {
+                    const choices = ['🌲','🌳','🌲','🪨','🦌','❄️','🏔️','🍄'];
+                    props.push({
+                        type: 'emoji', x, y,
+                        emoji: choices[Math.floor(rand() * choices.length)],
+                        size: 30 + rand() * 24
+                    });
+                }
+            }
+        }
+        return props;
+    },
+
+    /** Tall building with deterministic lit yellow windows. The local origin
+     *  is the building's BASE (it grows upward = toward -Y in canvas coords). */
+    _drawBuildingProp(ctx, p) {
+        const w = p.w, h = p.h;
+        // Soft shadow on the ground
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w * 0.62, w * 0.22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-w/2, -h, w, h);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-w/2 + 0.5, -h + 0.5, w - 1, h - 1);
+
+        // Lit windows — deterministic pattern from the prop's winSeed
+        let s = p.winSeed | 0;
+        const next = () => { s = (s * 9301 + 49297) | 0; return ((s % 100) + 100) % 100; };
+        const cols = Math.floor((w - 6) / 6);
+        const rows = Math.floor((h - 8) / 8);
+        ctx.fillStyle = '#ffd400';
+        ctx.shadowColor = '#ffd400';
+        ctx.shadowBlur = 4;
+        for (let r = 1; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (next() > 38) continue;          // ~38% of windows lit
+                ctx.fillRect(-w/2 + 4 + c * 6, -h + r * 8, 2.5, 3);
+            }
+        }
+        ctx.shadowBlur = 0;
+    },
+
+    /** Jagged rock pile — irregular polygon with a soft highlight. */
+    _drawRockProp(ctx, p) {
+        const r = p.r;
+        let s = p.shapeSeed | 0;
+        const next = () => { s = (s * 9301 + 49297) | 0; return (((s % 100) + 100) % 100) / 100; };
+
+        // Ground shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(2, 3, r * 1.05, r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body
+        const sides = 7;
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < sides; i++) {
+            const a = (i / sides) * Math.PI * 2;
+            const rr = r * (0.75 + next() * 0.45);
+            const x = Math.cos(a) * rr;
+            const y = Math.sin(a) * rr - r * 0.2;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Top highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.25, -r * 0.45, r * 0.4, r * 0.18, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+    },
+
+    /** Stylised pine: brown trunk + 3 stacked dark-green triangular layers. */
+    _drawPineProp(ctx, p) {
+        const h = p.h, w = p.w;
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w * 0.55, w * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Trunk
+        ctx.fillStyle = '#4a2f1a';
+        ctx.fillRect(-2.5, -10, 5, 10);
+
+        // 3 stacked triangles of foliage
+        ctx.fillStyle = p.tint || '#2a4a2a';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.lineWidth = 1;
+        const baseY = -10;
+        const totalH = h - 10;
+        const layers = 3;
+        const layerH = totalH / layers;
+        for (let i = 0; i < layers; i++) {
+            const layerW = (w / 2) * (1 - i * 0.22);
+            const top    = baseY - (i + 1) * layerH;
+            const bottom = baseY - i * layerH + 4;       // overlap a touch
+            ctx.beginPath();
+            ctx.moveTo(0, top);
+            ctx.lineTo(-layerW, bottom);
+            ctx.lineTo( layerW, bottom);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    },
+
+    /** Draw an emoji centered at the local origin. The system emoji font
+     *  takes care of all the colour for us. A subtle drop shadow grounds
+     *  the emoji against the terrain. */
+    _drawEmojiProp(ctx, p) {
+        ctx.font = `${p.size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.fillText(p.emoji, 2, 2);
+        // Main
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(p.emoji, 0, 0);
+    },
+
+    /**
      * Draw a single car at its world position. Customization is the same
      * shape persisted by garage.html. Health < 25% adds a damaged tint.
      */
