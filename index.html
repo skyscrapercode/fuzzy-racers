@@ -63,20 +63,24 @@
             <section class="modal-section">
                 <h3>Powerups</h3>
                 <ul>
-                    <li><strong>Boost</strong> — Temporary speed surge. Best used on straightaways.</li>
-                    <li><strong>Shield</strong> — Absorbs the next hit; blocks missiles and oil slicks.</li>
-                    <li><strong>Missile</strong> — Homing projectile that locks onto the car ahead.</li>
-                    <li><strong>Oil Slick</strong> — Drops behind your car; cars that hit it lose grip.</li>
+                    <li><strong>🔴 Speed Boost</strong> — +50% speed for 5s. Best used on straightaways.</li>
+                    <li><strong>🛡️ Shield</strong> — Immune to all damage for 6s; blocks missiles, oil, and rams.</li>
+                    <li><strong>🎯 Missile</strong> — Homing rocket at the car ahead. 15 HP damage per hit.</li>
+                    <li><strong>🌊 Oil Slick</strong> — Drips behind you; cars that hit it spin out.</li>
+                    <li><strong>⚡ EMP Blast</strong> — Stuns nearby cars for 2s.</li>
+                    <li><strong>🔧 Repair Kit</strong> — Instantly restores 40 HP.</li>
+                    <li><strong>🌀 Tornado</strong> — Spins out the car ahead.</li>
+                    <li><strong>💨 Nitro Surge</strong> — Massive 2s burst. Requires the Nitro Engine.</li>
                 </ul>
             </section>
 
             <section class="modal-section">
                 <h3>Fuzzy AI Difficulty</h3>
-                <p>Opponents use a fuzzy logic controller that weighs distance to the racing line, gap to nearby cars, and powerup risk. Difficulty tunes how aggressively those rules fire.</p>
+                <p>Opponents use a fuzzy logic controller that weighs distance to the player, gap, corner sharpness, health, and powerup readiness. Difficulty tunes how often the engine re-ticks, how much input noise it adds, and how strongly it rubber-bands.</p>
                 <ul>
-                    <li><strong>Rookie</strong> — Wide cornering, hesitant with powerups, makes mistakes.</li>
-                    <li><strong>Pro</strong> — Tight lines, reactive to traffic, holds powerups for good moments.</li>
-                    <li><strong>Ace</strong> — Aggressive overtakes, opportunistic missile timing, near-perfect lines.</li>
+                    <li><strong>🟢 Rookie</strong> — Slow 1.5s reactions, ±20% input noise, rarely uses powerups, mild catch-up. Prone to mistakes.</li>
+                    <li><strong>🟡 Racer</strong> — Moderate 0.8s reactions, ±10% noise, strategic powerup use, moderate rubber-banding.</li>
+                    <li><strong>🔴 Champion</strong> — Fast 0.3s reactions, ±3% noise, aggressive optimal powerups, strong rubber-banding, and ★ predicts your powerups.</li>
                 </ul>
             </section>
 
