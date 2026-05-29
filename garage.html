@@ -616,6 +616,49 @@
             document.querySelectorAll('.tab-panel').forEach(p => {
                 p.hidden = p.id !== 'tab-' + name;
             });
+            // A canvas inside a hidden panel has zero layout size, so any icon
+            // drawn while the panel was hidden came out blank (the Tires and
+            // Body Kit panels start hidden, which is why their icons were not
+            // showing). Now that this panel is visible, redraw its canvases on
+            // the next frame once layout has settled.
+            requestAnimationFrame(() => redrawPanelCanvases('tab-' + name));
+        }
+
+        // Redraw every canvas-backed card inside a panel (option icons +
+        // pattern previews). Safe to call any time the panel is visible.
+        function redrawPanelCanvases(panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            // Option-card icons (engine / tires / body kit)
+            panel.querySelectorAll('.opt-card').forEach(card => {
+                const cv = card.querySelector('.opt-icon');
+                if (!cv || typeof card._drawIcon !== 'function') return;
+                const { ctx, w, h } = fitCanvas(cv);
+                ctx.clearRect(0, 0, w, h);
+                card._drawIcon(ctx, w, h);
+            });
+
+            // Pattern-preview cards (paint tab)
+            const carShape = (getCarById(selectedId) || {}).shape || 'sedan';
+            panel.querySelectorAll('.pattern-card').forEach(card => {
+                const cv = card.querySelector('canvas');
+                if (!cv) return;
+                const { ctx, w, h } = fitCanvas(cv);
+                ctx.clearRect(0, 0, w, h);
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+                const s = Math.min(w / 140, h / 60);
+                ctx.scale(s, s);
+                drawCarTopDown(ctx, {
+                    shape: carShape,
+                    paint: customization.paint,
+                    accent: customization.accent,
+                    pattern: card.dataset.id,
+                    glow: false
+                });
+                ctx.restore();
+            });
         }
 
         // ---- Build option grids ----
