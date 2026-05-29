@@ -158,12 +158,13 @@ const Race = {
         this.inspectorEl = document.getElementById('fuzzyInspector');
         if (!this.inspectorEl) return;
         this.inspectorVisible = false;
+        this._insp = null;   // skeleton + refs, built lazily on first toggle
         // F-key toggle is wired in _setupInput.
-        // Refresh on a 500ms cadence — frequent enough to feel live, slow
-        // enough to be readable. Only writes DOM when visible.
+        // Refresh at ~120ms (≈8fps) when visible — smooth enough for the
+        // live needles/curves, cheap enough not to dent the race loop.
         setInterval(() => {
             if (this.inspectorVisible) this._refreshInspector();
-        }, 500);
+        }, 120);
     },
 
     _toggleInspector() {
@@ -173,110 +174,346 @@ const Race = {
         if (this.inspectorVisible) this._refreshInspector();
     },
 
+    // Consistent per-set colour palette shared by charts + legends.
+    _fiColors: ['#00eaff', '#ff2bd6', '#ffd400', '#39ff7a', '#ff3355', '#a479ff'],
+
+    /**
+     * Build the inspector DOM once and cache element refs + a dedicated
+     * "visualisation" FuzzyEngine. We run this throwaway engine on the live
+     * inputs each refresh so the whole panel (fuzzification → rules →
+     * defuzzification) is a single consistent snapshot — without disturbing
+     * the real AI engine's state or stats.
+     */
+    _buildInspectorSkeleton() {
+        const el = this.inspectorEl;
+        const viz = new FuzzyEngine();
+        const schema = viz.getVariableSchema();
+        this._insp = { viz, inputs: {}, outputs: {} };
+
+        el.innerHTML = `
+            <div class="fi-header">
+                <h3>🧠 AI Fuzzy Brain</h3>
+                <span class="fi-hint">[F] close</span>
+            </div>
+            <div class="fi-meta" id="fiMeta"></div>
+            <section class="fi-section">
+                <h4>① Fuzzification <span class="fi-tag">inputs → membership μ</span></h4>
+                <div class="fi-charts" id="fiInputCharts"></div>
+            </section>
+            <section class="fi-section">
+                <h4>② Rule activations <span class="fi-tag" id="fiRuleTag"></span></h4>
+                <div class="fi-rules" id="fiRules"></div>
+            </section>
+            <section class="fi-section">
+                <h4>③ Defuzzification <span class="fi-tag">aggregate → centroid</span></h4>
+                <div class="fi-charts" id="fiOutputCharts"></div>
+            </section>`;
+
+        this._insp.metaEl  = el.querySelector('#fiMeta');
+        this._insp.ruleTag = el.querySelector('#fiRuleTag');
+        this._insp.rulesEl = el.querySelector('#fiRules');
+
+        const makeCard = (host, name) => {
+            const card = document.createElement('div');
+            card.className = 'fi-chart-card';
+            card.innerHTML = `
+                <div class="fi-chart-top">
+                    <span class="fi-chart-name">${name}</span>
+                    <span class="fi-chart-val"></span>
+                </div>
+                <canvas></canvas>
+                <div class="fi-leg"></div>`;
+            host.appendChild(card);
+            return {
+                canvas: card.querySelector('canvas'),
+                valEl:  card.querySelector('.fi-chart-val'),
+                legEl:  card.querySelector('.fi-leg')
+            };
+        };
+
+        const inHost = el.querySelector('#fiInputCharts');
+        for (const v in schema.inputs) {
+            this._insp.inputs[v] = Object.assign(
+                { setNames: schema.inputs[v].sets, range: schema.inputs[v].range },
+                makeCard(inHost, v));
+        }
+        const outHost = el.querySelector('#fiOutputCharts');
+        for (const v in schema.outputs) {
+            this._insp.outputs[v] = Object.assign(
+                { setNames: schema.outputs[v].sets, range: schema.outputs[v].range },
+                makeCard(outHost, v));
+        }
+    },
+
     _refreshInspector() {
         const ctl = this.ai && this.ai._controller;
         if (!ctl || !this.inspectorEl) return;
-        const dbg = ctl.getFuzzyDebug();
-        if (!dbg) { this.inspectorEl.innerHTML = '<div class="fi-empty">Waiting for first AI tick…</div>'; return; }
+        if (!this._insp) this._buildInspectorSkeleton();
+        const insp = this._insp;
 
-        const INPUT_RANGES = {
-            distance:    { min: 0,    max: 1000 },
-            player_speed:{ min: 0,    max: 100  },
-            corner:      { min: 0,    max: 100  },
-            health:      { min: 0,    max: 100  },
-            gap:         { min: -100, max: 100  },
-            powerup:     { min: 0,    max: 100  }
-        };
-        const OUT_RANGES = {
-            throttle:    { min: 0,    max: 100 },
-            brake:       { min: 0,    max: 100 },
-            steering:    { min: -100, max: 100 },
-            aggression:  { min: 0,    max: 100 },
-            use_powerup: { min: 0,    max: 100 }
-        };
-
-        const barRow = (label, value, range, klass = '') => {
-            const pct = Math.max(0, Math.min(100,
-                ((value - range.min) / (range.max - range.min)) * 100));
-            return `<div class="fi-row">
-                <span class="fi-label">${label}</span>
-                <div class="fi-bar"><div class="fi-bar-fill ${klass}" style="width:${pct}%"></div></div>
-                <span class="fi-val">${value.toFixed(1)}</span>
-            </div>`;
-        };
-
-        let html = '';
-        html += `<div class="fi-header">
-            <h3>🧠 AI FUZZY BRAIN</h3>
-            <span class="fi-hint">[F] close</span>
-        </div>`;
-
-        // Inputs — recomputed live each refresh so corner and health always
-        // reflect the current car state, not the stale last-fuzzy-tick snapshot.
-        // (Corner in particular sits near 0 for long straights and health only
-        // changes on damage, so both appeared frozen when read from dbg.inputs.)
-        const _N    = this.track.waypoints.length;
-        const _la   = ctl.lookAheadCorner || 6;
-        const _cidx = (_N > 0) ? (this.ai.waypointIndex + _la) % _N : 0;
-        const _wp   = this.track.waypoints[_cidx];
+        // ---- Live crisp inputs (same formula as AIController._buildInputs) ----
+        // Recomputed every refresh so the needles move continuously, not just
+        // on the AI's fuzzy ticks.
+        const N    = this.track.waypoints.length;
+        const la   = ctl.lookAheadCorner || 6;
+        const cidx = (N > 0) ? (this.ai.waypointIndex + la) % N : 0;
+        const wp   = this.track.waypoints[cidx];
         const liveInputs = {
             distance:     Math.min(1000, Math.hypot(this.player.x - this.ai.x,
                                                     this.player.y - this.ai.y)),
             player_speed: Math.min(100, (this.player.speed /
                                          Math.max(1, this.player.maxSpeed)) * 100),
-            corner:       _wp ? _wp.sharpness : 0,
+            corner:       wp ? wp.sharpness : 0,
             health:       (this.ai.health / Math.max(1, this.ai.maxHealth)) * 100,
             gap:          -this._computeGap(),   // negative = AI losing
             powerup:      this.ai.powerupSlot ? 100 : 0
         };
-        html += '<section class="fi-section"><h4>Crisp Inputs</h4>';
-        for (const k in liveInputs) {
-            html += barRow(k, liveInputs[k], INPUT_RANGES[k] || { min: 0, max: 100 });
-        }
-        html += '</section>';
 
-        // Memberships
-        html += '<section class="fi-section"><h4>Memberships</h4>';
-        for (const v in dbg.memberships) {
-            html += `<div class="fi-mem-var"><div class="fi-mem-var-name">${v}</div>`;
-            for (const set in dbg.memberships[v]) {
-                const deg = dbg.memberships[v][set];
-                const active = deg > 0.05;
-                html += `<div class="fi-mem-row ${active ? 'on' : ''}">
-                    <span class="fi-mem-set">${set}</span>
-                    <div class="fi-mem-bar"><div class="fi-mem-bar-fill" style="width:${(deg*100).toFixed(0)}%"></div></div>
-                    <span class="fi-mem-deg">${deg.toFixed(2)}</span>
-                </div>`;
-            }
-            html += '</div>';
-        }
-        html += '</section>';
+        // Single consistent snapshot from the dedicated viz engine.
+        insp.viz.infer(liveInputs);
+        const dbg = insp.viz.getFuzzyDebugInfo();
+        const C = this._fiColors;
 
-        // Rules (top 8 active + small inactive count tag)
-        const fired = dbg.active_rules || [];
-        const inactiveCount = (ctl.fuzzy.getRules().length - fired.length);
-        html += `<section class="fi-section"><h4>Active Rules
-            <span class="fi-tag">${fired.length} firing · ${inactiveCount} dormant</span></h4>`;
-        for (const r of fired.slice(0, 8)) {
-            html += `<div class="fi-rule on" title="${r.why || ''}">
-                <span class="fi-rule-id">#${r.id}</span>
-                <span class="fi-rule-text">${r.antecedents.join(' AND ')} → <b>${r.consequent}</b></span>
-                <span class="fi-rule-fire">${(r.firing*100).toFixed(0)}%</span>
-            </div>`;
+        // ---- Meta line ----
+        const diff   = this.difficultyId || 'racer';
+        const tickMs = ({ rookie: 1500, racer: 800, champion: 300 })[diff] || 800;
+        insp.metaEl.innerHTML =
+            `<span class="fi-meta-chip">AI <b>${diff.toUpperCase()}</b></span>` +
+            `<span class="fi-meta-chip">re-ticks ~<b>${(tickMs / 1000).toFixed(1)}s</b></span>` +
+            `<span class="fi-meta-chip">viz <b>live</b></span>`;
+
+        // ---- Input charts (fuzzification) ----
+        for (const v in insp.inputs) {
+            const c   = insp.inputs[v];
+            const val = liveInputs[v];
+            const mem = dbg.memberships[v] || {};
+            let domSet = '', domDeg = 0;
+            for (const s in mem) if (mem[s] > domDeg) { domDeg = mem[s]; domSet = s; }
+            c.valEl.innerHTML =
+                `${this._fiFmt(val)}<span class="fi-chart-set">${domDeg > 0.01 ? domSet : '—'}</span>`;
+            this._drawInputChart(c.canvas, insp.viz._inputs[v], c.setNames, c.range, val, mem);
+            c.legEl.innerHTML = c.setNames.map((s, i) => {
+                const d = mem[s] || 0;
+                return `<span class="fi-leg-item ${d > 0.01 ? 'on' : ''}">` +
+                       `<span class="fi-leg-swatch" style="background:${C[i % C.length]}"></span>` +
+                       `${s}<span class="fi-leg-deg">${d.toFixed(2)}</span></span>`;
+            }).join('');
         }
+
+        // ---- Rule activations ----
+        const fired = (dbg.active_rules || []).slice().sort((a, b) => b.firing - a.firing);
+        const total = insp.viz.getRules().length;
+        insp.ruleTag.textContent = `${fired.length} firing · ${total - fired.length} dormant`;
         if (fired.length === 0) {
-            html += '<div class="fi-rule off">No rules currently firing.</div>';
+            insp.rulesEl.innerHTML = '<div class="fi-rule off">No rules currently firing.</div>';
+        } else {
+            insp.rulesEl.innerHTML = fired.slice(0, 8).map(r => {
+                const pct = (r.firing * 100).toFixed(0);
+                return `<div class="fi-rule on" title="${r.why || ''}">
+                    <div class="fi-rule-line">
+                        <span class="fi-rule-id">#${r.id}</span>
+                        <span class="fi-rule-text">${r.antecedents.join(' AND ')} → <b>${r.consequent}</b></span>
+                        <span class="fi-rule-fire">${pct}%</span>
+                    </div>
+                    <div class="fi-rule-bar"><div class="fi-rule-bar-fill" style="width:${pct}%"></div></div>
+                </div>`;
+            }).join('');
         }
-        html += '</section>';
 
-        // Outputs
-        html += '<section class="fi-section"><h4>Defuzzified Outputs</h4>';
-        for (const k in dbg.outputs) {
-            html += barRow(k, dbg.outputs[k], OUT_RANGES[k] || { min: 0, max: 100 }, 'out');
+        // ---- Output charts (defuzzification) ----
+        for (const v in insp.outputs) {
+            const c     = insp.outputs[v];
+            const crisp = dbg.outputs[v];
+            const acts  = dbg.activations[v] || {};
+            c.valEl.innerHTML = this._fiFmt(crisp);
+            this._drawOutputChart(c.canvas, insp.viz._outputs[v], c.setNames, c.range, acts, crisp);
+            c.legEl.innerHTML = c.setNames.map((s, i) => {
+                const a = acts[s] || 0;
+                return `<span class="fi-leg-item ${a > 0.01 ? 'on' : ''}">` +
+                       `<span class="fi-leg-swatch" style="background:${C[i % C.length]}"></span>` +
+                       `${s}<span class="fi-leg-deg">${a.toFixed(2)}</span></span>`;
+            }).join('');
         }
-        html += '</section>';
+    },
 
-        this.inspectorEl.innerHTML = html;
+    /** Compact value formatter for chart headers (sign-aware integers). */
+    _fiFmt(v) {
+        if (v == null || isNaN(v)) return '—';
+        return (Math.round(v * 10) / 10).toString();
+    },
+
+    /** Prepare a chart canvas: size to its CSS box × dpr, clear, return ctx
+     *  plus the inner plot rectangle. */
+    _fiPrep(canvas) {
+        const ctx = canvas.getContext('2d');
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = canvas.getBoundingClientRect();
+        const cw = Math.max(40, rect.width), ch = Math.max(30, rect.height);
+        if (canvas.width !== Math.round(cw * dpr)) {
+            canvas.width  = Math.round(cw * dpr);
+            canvas.height = Math.round(ch * dpr);
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cw, ch);
+        const ML = 20, MR = 6, MT = 7, MB = 12;
+        return { ctx, cw, ch, ML, MR, MT, MB, pw: cw - ML - MR, ph: ch - MT - MB };
+    },
+
+    /** Y gridlines + μ labels (0 / 0.5 / 1) shared by both chart types. */
+    _fiYGrid(ctx, g) {
+        ctx.font = '8px monospace';
+        ctx.textBaseline = 'middle';
+        [0, 0.5, 1].forEach(yv => {
+            const py = g.MT + (1 - yv) * g.ph;
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(g.ML, py); ctx.lineTo(g.ML + g.pw, py); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.textAlign = 'right';
+            ctx.fillText(yv.toFixed(1), g.ML - 3, py);
+        });
+    },
+
+    /**
+     * Fuzzification chart: every set's membership curve, a dashed vertical
+     * "needle" at the current crisp input, and a glowing dot where the
+     * needle crosses each set (its membership degree).
+     */
+    _drawInputChart(canvas, varObj, setNames, range, crisp, mem) {
+        const g = this._fiPrep(canvas);
+        const ctx = g.ctx;
+        const C = this._fiColors;
+        const [min, max] = range;
+        this._fiYGrid(ctx, g);
+
+        setNames.forEach((s, i) => {
+            const fn = varObj.sets[s];
+            if (!fn) return;
+            ctx.strokeStyle = C[i % C.length];
+            ctx.lineWidth = 1.6;
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            for (let p = 0; p <= 60; p++) {
+                const x = min + (max - min) * (p / 60);
+                const mu = Math.max(0, Math.min(1, fn(x)));
+                const px = g.ML + (p / 60) * g.pw;
+                const py = g.MT + (1 - mu) * g.ph;
+                p === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+
+        // Needle at the crisp value
+        const cc = Math.max(min, Math.min(max, crisp));
+        const nx = g.ML + ((cc - min) / (max - min)) * g.pw;
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(nx, g.MT); ctx.lineTo(nx, g.MT + g.ph); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Membership dots where the needle crosses each set
+        setNames.forEach((s, i) => {
+            const d = mem[s] || 0;
+            if (d <= 0.02) return;
+            const py = g.MT + (1 - d) * g.ph;
+            ctx.fillStyle = C[i % C.length];
+            ctx.shadowColor = C[i % C.length];
+            ctx.shadowBlur = 6;
+            ctx.beginPath(); ctx.arc(nx, py, 2.6, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        });
+    },
+
+    /**
+     * Defuzzification chart: faint individual set curves, the Mamdani
+     * aggregated-clipped membership area μ(x) = max_s min(activation_s,
+     * set_s(x)) filled in cyan, and a green centroid line at the crisp output.
+     */
+    _drawOutputChart(canvas, varObj, setNames, range, acts, crisp) {
+        const g = this._fiPrep(canvas);
+        const ctx = g.ctx;
+        const C = this._fiColors;
+        const [min, max] = range;
+        this._fiYGrid(ctx, g);
+
+        // Faint individual set curves for context
+        setNames.forEach((s, i) => {
+            const fn = varObj.sets[s];
+            if (!fn) return;
+            ctx.strokeStyle = C[i % C.length];
+            ctx.globalAlpha = 0.22;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let p = 0; p <= 60; p++) {
+                const x = min + (max - min) * (p / 60);
+                const mu = Math.max(0, Math.min(1, fn(x)));
+                const px = g.ML + (p / 60) * g.pw;
+                const py = g.MT + (1 - mu) * g.ph;
+                p === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+
+        // Aggregated clipped curve
+        const SAMP = 80;
+        const agg = new Array(SAMP + 1);
+        let any = false;
+        for (let p = 0; p <= SAMP; p++) {
+            const x = min + (max - min) * (p / SAMP);
+            let m = 0;
+            for (let i = 0; i < setNames.length; i++) {
+                const a = acts[setNames[i]] || 0;
+                if (a <= 0) continue;
+                const fn = varObj.sets[setNames[i]];
+                const mu = Math.min(a, Math.max(0, Math.min(1, fn(x))));
+                if (mu > m) m = mu;
+            }
+            agg[p] = m;
+            if (m > 0) any = true;
+        }
+        if (any) {
+            // Filled area
+            ctx.beginPath();
+            ctx.moveTo(g.ML, g.MT + g.ph);
+            for (let p = 0; p <= SAMP; p++) {
+                ctx.lineTo(g.ML + (p / SAMP) * g.pw, g.MT + (1 - agg[p]) * g.ph);
+            }
+            ctx.lineTo(g.ML + g.pw, g.MT + g.ph);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(0,234,255,0.22)';
+            ctx.fill();
+            // Outline
+            ctx.beginPath();
+            for (let p = 0; p <= SAMP; p++) {
+                const px = g.ML + (p / SAMP) * g.pw;
+                const py = g.MT + (1 - agg[p]) * g.ph;
+                p === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.strokeStyle = '#00eaff';
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+        }
+
+        // Centroid line (the crisp defuzzified output)
+        const cc = Math.max(min, Math.min(max, crisp));
+        const nx = g.ML + ((cc - min) / (max - min)) * g.pw;
+        ctx.strokeStyle = '#39ff7a';
+        ctx.lineWidth = 1.6;
+        ctx.shadowColor = '#39ff7a';
+        ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.moveTo(nx, g.MT); ctx.lineTo(nx, g.MT + g.ph); ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Down-pointing marker at the top of the centroid line
+        ctx.fillStyle = '#39ff7a';
+        ctx.beginPath();
+        ctx.moveTo(nx, g.MT + 4);
+        ctx.lineTo(nx - 3, g.MT - 1);
+        ctx.lineTo(nx + 3, g.MT - 1);
+        ctx.closePath();
+        ctx.fill();
     },
 
     _setupInput() {
