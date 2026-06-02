@@ -362,7 +362,11 @@ const World3D = {
         const dims = this._carDims(car);
         const hl = dims.L / 2, hw = dims.W / 2;
         const baseY = 4;                 // body sits this high; wheels peek below
-        const topY  = baseY + dims.H;    // body's top surface
+        // The extruded body has a ~1.5-unit bevel on top, so its real top
+        // surface is dims.H + ~2 above baseY. Account for it here so the
+        // cockpit, pattern decal, roof strip, and FX sit ON the body, not
+        // buried inside it.
+        const topY  = baseY + dims.H + 2;
 
         // Soft contact-shadow (sized to the chassis footprint).
         const shadow = new THREE.Mesh(
@@ -391,8 +395,23 @@ const World3D = {
         cockpit.position.set(-dims.L * 0.04, topY + 3, 0);
         group.add(cockpit);
 
-        // ---- Pattern overlay (sits flush on the body top) ----
-        this._addCarPattern(group, pattern, accent, dims, topY + 0.3);
+        // ---- Pattern decal across the top deck (bold + unlit so the paint
+        //      job reads clearly from the chase cam, just like the garage). ----
+        const patTex = this._makePatternTexture(pattern, accent);
+        if (patTex) {
+            // Sized to the flat central deck so it doesn't overhang the
+            // tapered nose/tail. The texture's u→forward(X), v→lateral(Z).
+            const decal = new THREE.Mesh(
+                new THREE.PlaneGeometry(dims.L * 0.8, dims.W * 0.84),
+                new THREE.MeshBasicMaterial({
+                    map: patTex, transparent: true, depthWrite: false,
+                    polygonOffset: true, polygonOffsetFactor: -2
+                })
+            );
+            decal.rotation.x = -Math.PI / 2;   // lay flat: local X→X, local Y→Z
+            decal.position.set(0, topY + 0.6, 0);
+            group.add(decal);
+        }
 
         // ---- Wheels ----
         const wheelGeom = new THREE.CylinderGeometry(5.5, 5.5, 5, 16);
@@ -463,42 +482,57 @@ const World3D = {
         return group;
     },
 
-    /** Paint-job overlay on the body top: racing stripes, a flame motif, or
-     *  camo blotches (solid = nothing). Accent-coloured. */
-    _addCarPattern(group, pattern, accent, dims, y) {
-        const hl = dims.L / 2, hw = dims.W / 2;
-        const accentMat = () => new THREE.MeshLambertMaterial({
-            color: new THREE.Color(accent),
-            emissive: new THREE.Color(accent), emissiveIntensity: 0.18
-        });
+    /** Build a CanvasTexture of the paint-job pattern (accent on transparent)
+     *  for the body-top decal. Texture u→forward(X), v→lateral(Z). Returns
+     *  null for 'solid' (no decal). Mirrors the garage's pattern motifs so the
+     *  in-race car matches the customisation preview. */
+    _makePatternTexture(pattern, accent) {
+        if (!pattern || pattern === 'solid') return null;
+        const W = 256, H = 128;
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = accent;
+        ctx.strokeStyle = accent;
+
         if (pattern === 'stripes') {
-            const g = new THREE.BoxGeometry(dims.L * 0.82, 0.5, 3);
-            for (const z of [hw * 0.32, -hw * 0.32]) {
-                const m = new THREE.Mesh(g, accentMat()); m.position.set(0, y, z); group.add(m);
-            }
+            // Two bold racing stripes running front↔back (along u).
+            ctx.globalAlpha = 0.95;
+            ctx.fillRect(0, H * 0.30, W, H * 0.12);
+            ctx.fillRect(0, H * 0.58, W, H * 0.12);
         } else if (pattern === 'flame') {
-            // A tapering flame down the hood centreline (front → mid).
-            const flame = new THREE.Shape();
-            flame.moveTo(hl * 0.95, 0);
-            flame.lineTo(hl * 0.1,  hw * 0.42);
-            flame.lineTo(-hl * 0.15, 0);
-            flame.lineTo(hl * 0.1, -hw * 0.42);
-            flame.closePath();
-            const fg = new THREE.ExtrudeGeometry(flame, { depth: 0.5, bevelEnabled: false });
-            fg.rotateX(-Math.PI / 2);
-            const fm = new THREE.Mesh(fg, accentMat());
-            fm.position.set(0, y, 0);
-            group.add(fm);
+            // Flame licking back from the nose (u = 1 / right edge = front).
+            ctx.globalAlpha = 0.95;
+            const tongue = (x0, spread, tip) => {
+                ctx.beginPath();
+                ctx.moveTo(W * tip, H * 0.5);
+                ctx.lineTo(W * x0,  H * (0.5 - spread));
+                ctx.lineTo(W * (x0 + 0.12), H * 0.5);
+                ctx.lineTo(W * x0,  H * (0.5 + spread));
+                ctx.closePath();
+                ctx.fill();
+            };
+            tongue(0.30, 0.42, 1.0);
+            tongue(0.10, 0.26, 0.72);
         } else if (pattern === 'camo') {
-            const blobs = [[-0.25, 0.28], [0.18, -0.22], [0.05, 0.30], [-0.32, -0.18], [0.34, 0.12]];
-            for (const [bx, bz] of blobs) {
-                const r = 3 + Math.abs(bx) * 8;
-                const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.5, 8), accentMat());
-                m.position.set(bx * dims.L, y, bz * dims.W);
-                group.add(m);
+            const blobs = [[0.22, 0.30], [0.48, 0.62], [0.70, 0.34], [0.40, 0.50], [0.82, 0.70], [0.15, 0.64]];
+            ctx.globalAlpha = 0.65;
+            for (const [bx, by] of blobs) {
+                ctx.beginPath(); ctx.ellipse(bx * W, by * H, 24, 17, 0, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = '#0b0e1a';
+            for (const [bx, by] of [[0.35, 0.46], [0.64, 0.54], [0.55, 0.30], [0.78, 0.5]]) {
+                ctx.beginPath(); ctx.ellipse(bx * W, by * H, 16, 12, 0, 0, Math.PI * 2); ctx.fill();
             }
         }
-        // 'solid' → no overlay
+        ctx.globalAlpha = 1;
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        tex.needsUpdate = true;
+        return tex;
     },
 
     /** Body-kit hardware: aero rear wing, armored side bars, or stealth top
