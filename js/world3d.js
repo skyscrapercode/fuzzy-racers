@@ -289,149 +289,254 @@ const World3D = {
         return group;
     },
 
-    /** A car: body + cockpit + 4 wheels + headlights/taillights, all as a Group. */
+    // Per-chassis 3D body dimensions (length along X, width along Z, height,
+    // nose/tail taper). Mirrors the 2D baseDims in car.js (drawCarTopDown),
+    // scaled ~0.76× so the footprint matches the old fixed 64×30 box, so the
+    // 3D silhouette reads like the garage's top-down preview.
+    _shapeDims: {
+        sedan:   { L: 64, W: 30, H: 14, nose: 0.55, tail: 0.55 },
+        muscle:  { L: 70, W: 33, H: 15, nose: 0.45, tail: 0.65 },
+        compact: { L: 54, W: 29, H: 14, nose: 0.55, tail: 0.55 },
+        truck:   { L: 73, W: 38, H: 17, nose: 0.55, tail: 0.40 },
+        wedge:   { L: 69, W: 28, H: 12, nose: 0.30, tail: 0.70 },
+        coupe:   { L: 66, W: 30, H: 13, nose: 0.50, tail: 0.60 }
+    },
+
+    /** Resolve the chassis shape + body-kit into final body dimensions. */
+    _carDims(car) {
+        const shape = car._shape ||
+            (typeof getCarById === 'function' ? (getCarById(car.id) || {}).shape : null) ||
+            'sedan';
+        const base = this._shapeDims[shape] || this._shapeDims.sedan;
+        const dims = Object.assign({ shape }, base);
+        // Stealth (low-profile) kit: narrower + lower, sharper nose — same
+        // tweak the 2D renderer applies.
+        const kitVisual = (typeof getBodyKit === 'function')
+            ? getBodyKit((car.customization || {}).bodyKit).visual
+            : 'stock';
+        dims.kit = kitVisual;
+        if (kitVisual === 'lowprofile') {
+            dims.W *= 0.85;
+            dims.H *= 0.78;
+            dims.nose = Math.max(0.2, dims.nose - 0.15);
+        }
+        return dims;
+    },
+
+    /** Build the body geometry by extruding the same top-down silhouette the
+     *  2D garage uses, then orienting it so length→X, width→Z, height→Y. */
+    _buildCarBodyGeometry(dims) {
+        const hl = dims.L / 2, hw = dims.W / 2;
+        const nose = dims.nose, tail = dims.tail;
+        // Shape plane: x = forward, y = lateral (matches drawCarSilhouette).
+        const s = new THREE.Shape();
+        s.moveTo(-hl, -hw + 2);
+        s.lineTo(-hl + hl * tail * 0.3, -hw);
+        s.lineTo( hl - hl * nose * 0.3, -hw);
+        s.quadraticCurveTo(hl, -hw, hl, -hw + 4);
+        s.lineTo( hl,  hw - 4);
+        s.quadraticCurveTo(hl,  hw, hl - hl * nose * 0.3,  hw);
+        s.lineTo(-hl + hl * tail * 0.3,  hw);
+        s.lineTo(-hl,  hw - 2);
+        s.closePath();
+        const geom = new THREE.ExtrudeGeometry(s, {
+            depth: dims.H, bevelEnabled: true,
+            bevelThickness: 1.5, bevelSize: 1.2, bevelSegments: 1, steps: 1
+        });
+        // Extrude builds in XY extruded along +Z; rotate so +Z (height)→+Y.
+        geom.rotateX(-Math.PI / 2);
+        return geom;
+    },
+
+    /** A car whose 3D look reflects the garage choices: chassis shape (body
+     *  silhouette + proportions), body kit (aero wing / armored sidebars /
+     *  stealth low-profile), pattern (stripes / flame / camo), and the
+     *  paint + accent colours. */
     _buildCarMesh(car) {
         const group = new THREE.Group();
         const carData = (typeof getCarById === 'function') ? getCarById(car.id) : null;
         const cust = car.customization || {};
-        const paint  = cust.paint  || (carData && carData.paint)  || '#00eaff';
-        const accent = cust.accent || (carData && carData.accent) || '#ffffff';
+        const paint   = cust.paint   || (carData && carData.paint)  || '#00eaff';
+        const accent  = cust.accent  || (carData && carData.accent) || '#ffffff';
+        const pattern = cust.pattern || 'stripes';
+        const dims = this._carDims(car);
+        const hl = dims.L / 2, hw = dims.W / 2;
+        const baseY = 4;                 // body sits this high; wheels peek below
+        const topY  = baseY + dims.H;    // body's top surface
 
-        // Soft drop-shadow under the car (flat dark ellipse just above ground).
-        // Real shadow mapping is expensive; this contact patch sells the
-        // illusion of grounding without lighting overhead.
-        const shadowGeom = new THREE.PlaneGeometry(74, 38);
-        const shadowMat  = new THREE.MeshBasicMaterial({
-            color: 0x000000, transparent: true, opacity: 0.45,
-            depthWrite: false
-        });
-        const shadow = new THREE.Mesh(shadowGeom, shadowMat);
+        // Soft contact-shadow (sized to the chassis footprint).
+        const shadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(dims.L * 1.12, dims.W * 1.25),
+            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false })
+        );
         shadow.rotation.x = -Math.PI / 2;
         shadow.position.y = 0.18;
         group.add(shadow);
 
-        // Body — length × height × width (X = forward, Z = lateral)
-        const bodyGeom = new THREE.BoxGeometry(64, 14, 30);
-        const bodyMat  = new THREE.MeshLambertMaterial({
+        // Body — extruded chassis silhouette in the paint colour.
+        const bodyMat = new THREE.MeshLambertMaterial({
             color: new THREE.Color(paint),
             emissive: new THREE.Color(paint),
             emissiveIntensity: 0.08
         });
-        const body = new THREE.Mesh(bodyGeom, bodyMat);
-        body.position.y = 8;
+        const body = new THREE.Mesh(this._buildCarBodyGeometry(dims), bodyMat);
+        body.position.y = baseY;
         group.add(body);
 
-        // Cockpit (dark glass)
-        const cockGeom = new THREE.BoxGeometry(26, 9, 22);
-        const cockMat  = new THREE.MeshLambertMaterial({ color: 0x0a0d18 });
-        const cockpit = new THREE.Mesh(cockGeom, cockMat);
-        cockpit.position.set(-2, 19, 0);
+        // Cockpit (dark glass), scaled to the chassis and set slightly rearward.
+        const cockpit = new THREE.Mesh(
+            new THREE.BoxGeometry(dims.L * 0.34, 9, dims.W * 0.62),
+            new THREE.MeshLambertMaterial({ color: 0x0a0d18 })
+        );
+        cockpit.position.set(-dims.L * 0.04, topY + 3, 0);
         group.add(cockpit);
 
-        // Two accent racing stripes along the top of the body, on either side
-        // of the cockpit. Placed flush on the body's top face (y = 15.05) so
-        // they sit on the paint rather than clipping into the cockpit glass.
-        const stripeGeom = new THREE.BoxGeometry(60, 0.4, 3);
-        const stripeMat  = new THREE.MeshLambertMaterial({
-            color: new THREE.Color(accent),
-            emissive: new THREE.Color(accent),
-            emissiveIntensity: 0.15
-        });
-        const stripeL = new THREE.Mesh(stripeGeom, stripeMat);
-        stripeL.position.set(0, 15.05,  6);
-        group.add(stripeL);
-        const stripeR = new THREE.Mesh(stripeGeom, stripeMat);
-        stripeR.position.set(0, 15.05, -6);
-        group.add(stripeR);
+        // ---- Pattern overlay (sits flush on the body top) ----
+        this._addCarPattern(group, pattern, accent, dims, topY + 0.3);
 
-        // Wheels — cylinders rotated so the round face shows on the side
+        // ---- Wheels ----
         const wheelGeom = new THREE.CylinderGeometry(5.5, 5.5, 5, 16);
         const wheelMat  = new THREE.MeshLambertMaterial({ color: 0x0a0c14 });
-        const wheelPos = [
-            [ 20, 4,  16],
-            [ 20, 4, -16],
-            [-20, 4,  16],
-            [-20, 4, -16]
-        ];
-        for (const [x, y, z] of wheelPos) {
+        const axleX = hl * 0.58, axleZ = hw + 0.5;
+        for (const [x, z] of [[axleX, axleZ], [axleX, -axleZ], [-axleX, axleZ], [-axleX, -axleZ]]) {
             const w = new THREE.Mesh(wheelGeom, wheelMat);
-            w.position.set(x, y, z);
+            w.position.set(x, 5, z);
             w.rotation.x = Math.PI / 2;
             group.add(w);
         }
 
-        // Headlights (+X side, front)
+        // ---- Lights ----
         const lampGeom = new THREE.BoxGeometry(2, 3, 5);
-        const headMat  = new THREE.MeshBasicMaterial({ color: 0xfff8b0 });
-        const hl1 = new THREE.Mesh(lampGeom, headMat);
-        hl1.position.set(32, 9, 10);
-        group.add(hl1);
-        const hl2 = new THREE.Mesh(lampGeom, headMat);
-        hl2.position.set(32, 9, -10);
-        group.add(hl2);
-
-        // Taillights (-X side, rear)
+        const lampY = baseY + dims.H * 0.4;
+        const headMat = new THREE.MeshBasicMaterial({ color: 0xfff8b0 });
         const tailMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
-        const tl1 = new THREE.Mesh(lampGeom, tailMat);
-        tl1.position.set(-32, 9, 9);
-        group.add(tl1);
-        const tl2 = new THREE.Mesh(lampGeom, tailMat);
-        tl2.position.set(-32, 9, -9);
-        group.add(tl2);
+        for (const z of [hw * 0.6, -hw * 0.6]) {
+            const h = new THREE.Mesh(lampGeom, headMat); h.position.set(hl - 1, lampY, z); group.add(h);
+            const t = new THREE.Mesh(lampGeom, tailMat); t.position.set(-hl + 1, lampY, z * 0.92); group.add(t);
+        }
 
-        // ---- Hidden FX children that we toggle visible based on car state ----
-        // Shield bubble (translucent cyan dome)
-        const shieldGeom = new THREE.SphereGeometry(38, 24, 16);
-        const shieldMat  = new THREE.MeshBasicMaterial({
-            color: 0x00eaff, transparent: true, opacity: 0.18,
-            depthWrite: false, side: THREE.DoubleSide
-        });
-        const shield = new THREE.Mesh(shieldGeom, shieldMat);
-        shield.position.set(0, 12, 0);
+        // ---- Body-kit add-ons ----
+        this._addBodyKit(group, dims.kit, accent, dims, baseY, topY);
+
+        // ---- Hidden FX children, sized/positioned from the chassis dims ----
+        const reach = Math.max(dims.L, dims.W);
+        const shield = new THREE.Mesh(
+            new THREE.SphereGeometry(reach * 0.62, 24, 16),
+            new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })
+        );
+        shield.position.set(0, topY * 0.6, 0);
         shield.visible = false;
         group.add(shield);
 
-        // Boost flame (red/yellow cone behind the car, faces -X)
-        const boostGeom = new THREE.ConeGeometry(7, 28, 12);
-        const boostMat  = new THREE.MeshBasicMaterial({
-            color: 0xff3355, transparent: true, opacity: 0.85
-        });
-        const boostFlame = new THREE.Mesh(boostGeom, boostMat);
-        boostFlame.rotation.z = Math.PI / 2;     // cone points -X
-        boostFlame.position.set(-44, 6, 0);
+        const boostFlame = new THREE.Mesh(
+            new THREE.ConeGeometry(7, 28, 12),
+            new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.85 })
+        );
+        boostFlame.rotation.z = Math.PI / 2;
+        boostFlame.position.set(-hl - 12, baseY + 2, 0);
         boostFlame.visible = false;
         group.add(boostFlame);
 
-        // Nitro flame (cyan, longer/brighter than boost)
-        const nitroGeom = new THREE.ConeGeometry(8, 38, 12);
-        const nitroMat  = new THREE.MeshBasicMaterial({
-            color: 0x00eaff, transparent: true, opacity: 0.9
-        });
-        const nitroFlame = new THREE.Mesh(nitroGeom, nitroMat);
+        const nitroFlame = new THREE.Mesh(
+            new THREE.ConeGeometry(8, 38, 12),
+            new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.9 })
+        );
         nitroFlame.rotation.z = Math.PI / 2;
-        nitroFlame.position.set(-50, 6, 0);
+        nitroFlame.position.set(-hl - 18, baseY + 2, 0);
         nitroFlame.visible = false;
         group.add(nitroFlame);
 
-        // Stun rings (purple, animated)
-        const stunRingGeom = new THREE.TorusGeometry(26, 1.4, 6, 32);
-        const stunRingMat  = new THREE.MeshBasicMaterial({
-            color: 0xa479ff, transparent: true, opacity: 0.7
-        });
-        const stunRing = new THREE.Mesh(stunRingGeom, stunRingMat);
+        const stunRing = new THREE.Mesh(
+            new THREE.TorusGeometry(reach * 0.42, 1.4, 6, 32),
+            new THREE.MeshBasicMaterial({ color: 0xa479ff, transparent: true, opacity: 0.7 })
+        );
         stunRing.rotation.x = Math.PI / 2;
-        stunRing.position.y = 14;
+        stunRing.position.y = topY;
         stunRing.visible = false;
         group.add(stunRing);
 
-        // Keep refs we may want to update later
         group.userData = {
             car, body, bodyMat, cockpit,
             originalPaint: new THREE.Color(paint),
             shield, boostFlame, nitroFlame, stunRing
         };
-
         return group;
+    },
+
+    /** Paint-job overlay on the body top: racing stripes, a flame motif, or
+     *  camo blotches (solid = nothing). Accent-coloured. */
+    _addCarPattern(group, pattern, accent, dims, y) {
+        const hl = dims.L / 2, hw = dims.W / 2;
+        const accentMat = () => new THREE.MeshLambertMaterial({
+            color: new THREE.Color(accent),
+            emissive: new THREE.Color(accent), emissiveIntensity: 0.18
+        });
+        if (pattern === 'stripes') {
+            const g = new THREE.BoxGeometry(dims.L * 0.82, 0.5, 3);
+            for (const z of [hw * 0.32, -hw * 0.32]) {
+                const m = new THREE.Mesh(g, accentMat()); m.position.set(0, y, z); group.add(m);
+            }
+        } else if (pattern === 'flame') {
+            // A tapering flame down the hood centreline (front → mid).
+            const flame = new THREE.Shape();
+            flame.moveTo(hl * 0.95, 0);
+            flame.lineTo(hl * 0.1,  hw * 0.42);
+            flame.lineTo(-hl * 0.15, 0);
+            flame.lineTo(hl * 0.1, -hw * 0.42);
+            flame.closePath();
+            const fg = new THREE.ExtrudeGeometry(flame, { depth: 0.5, bevelEnabled: false });
+            fg.rotateX(-Math.PI / 2);
+            const fm = new THREE.Mesh(fg, accentMat());
+            fm.position.set(0, y, 0);
+            group.add(fm);
+        } else if (pattern === 'camo') {
+            const blobs = [[-0.25, 0.28], [0.18, -0.22], [0.05, 0.30], [-0.32, -0.18], [0.34, 0.12]];
+            for (const [bx, bz] of blobs) {
+                const r = 3 + Math.abs(bx) * 8;
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.5, 8), accentMat());
+                m.position.set(bx * dims.L, y, bz * dims.W);
+                group.add(m);
+            }
+        }
+        // 'solid' → no overlay
+    },
+
+    /** Body-kit hardware: aero rear wing, armored side bars, or stealth top
+     *  accent. Stock adds nothing (the low-profile silhouette is in dims). */
+    _addBodyKit(group, kit, accent, dims, baseY, topY) {
+        const hl = dims.L / 2, hw = dims.W / 2;
+        if (kit === 'spoiler') {
+            const dark = new THREE.MeshLambertMaterial({ color: 0x1c2138 });
+            const acc  = new THREE.MeshLambertMaterial({
+                color: new THREE.Color(accent), emissive: new THREE.Color(accent), emissiveIntensity: 0.2
+            });
+            // Two posts at the tail
+            for (const z of [hw * 0.55, -hw * 0.55]) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(3, 8, 3), dark);
+                post.position.set(-hl + 4, topY + 4, z);
+                group.add(post);
+            }
+            // Wing blade spanning the width
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(8, 2, dims.W * 1.25), acc);
+            wing.position.set(-hl + 4, topY + 8, 0);
+            group.add(wing);
+        } else if (kit === 'sidebars') {
+            const barMat = new THREE.MeshLambertMaterial({ color: 0x2a2f44 });
+            for (const z of [hw + 2.5, -(hw + 2.5)]) {
+                const bar = new THREE.Mesh(new THREE.BoxGeometry(dims.L * 0.7, 5, 4), barMat);
+                bar.position.set(0, baseY + 3, z);
+                group.add(bar);
+            }
+        } else if (kit === 'lowprofile') {
+            // Thin matte accent strip along the roofline.
+            const strip = new THREE.Mesh(
+                new THREE.BoxGeometry(dims.L * 0.7, 0.6, 2),
+                new THREE.MeshLambertMaterial({ color: new THREE.Color(accent), emissive: new THREE.Color(accent), emissiveIntensity: 0.12 })
+            );
+            strip.position.set(0, topY + 0.4, 0);
+            group.add(strip);
+        }
+        // 'stock' → nothing
     },
 
     /** Generate a soft radial-gradient dot texture for billboarded particles. */
