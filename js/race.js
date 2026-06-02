@@ -553,6 +553,14 @@ const Race = {
                     this._toggleInspector();
                     e.preventDefault();
                 }
+                if (k === 'Escape' || k === 'Esc') {
+                    // Quit the race and return to the garage. Cancel the loop
+                    // so no stray frames run during navigation.
+                    this._cancelled = true;
+                    if (this._rafId) cancelAnimationFrame(this._rafId);
+                    window.location.href = 'garage.html';
+                    e.preventDefault();
+                }
             }
             if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
                 e.preventDefault();
