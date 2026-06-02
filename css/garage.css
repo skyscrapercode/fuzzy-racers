@@ -1066,7 +1066,7 @@
 
 .docs-mf-card canvas {
     width: 100%;
-    aspect-ratio: 5 / 2;            /* taller so the new axis labels fit */
+    aspect-ratio: 16 / 10;          /* taller so the labelled axes + arrows + titles breathe */
     background: #0a0d18;
     border-radius: 4px;
     display: block;

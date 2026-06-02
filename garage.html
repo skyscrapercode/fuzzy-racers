@@ -346,56 +346,34 @@
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 const W = rect.width, H = rect.height;
 
-                // Plot-area margins reserve room for axis labels and the
-                // X-axis title underneath the chart.
-                const ML = 32, MR = 8, MT = 8, MB = 32;
+                // Generous margins so the labelled axes + titles never crowd
+                // the plot — important for legibility when projected/explained.
+                const ML = 46, MR = 20, MT = 18, MB = 46;
                 const PW = W - ML - MR;   // plot width
                 const PH = H - MT - MB;   // plot height
                 const [min, max] = schema.range;
+                const ox = ML, oy = MT + PH;      // origin (bottom-left of plot)
+                const AXIS = 'rgba(255, 255, 255, 0.7)';
 
-                // ---- Y axis: μ (membership 0..1) ----
-                ctx.font = '9px "Consolas", "Monaco", monospace';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+                const fmt = (n) => {
+                    // Compact integer; show a leading sign for signed ranges.
+                    if (Math.abs(n) >= 1 && Number.isInteger(n)) return (n > 0 && min < 0 ? '+' : '') + n;
+                    return (n > 0 && min < 0 ? '+' : '') + (Math.round(n * 10) / 10);
+                };
+
+                // ---- Faint graph-paper gridlines ----
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
                 ctx.lineWidth = 1;
-                const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
-                yTicks.forEach(yv => {
+                [0, 0.25, 0.5, 0.75, 1].forEach(yv => {           // horizontal
                     const py = MT + (1 - yv) * PH;
-                    ctx.beginPath();
-                    ctx.moveTo(ML, py);
-                    ctx.lineTo(ML + PW, py);
-                    ctx.stroke();
-                    // Major ticks get a number; quarter ticks just get the line.
-                    if (yv === 0 || yv === 0.5 || yv === 1) {
-                        ctx.fillText(yv.toFixed(1), ML - 4, py);
-                    }
+                    ctx.beginPath(); ctx.moveTo(ox, py); ctx.lineTo(ox + PW, py); ctx.stroke();
                 });
-                // Y axis title (μ)
-                ctx.save();
-                ctx.translate(8, MT + PH / 2);
-                ctx.rotate(-Math.PI / 2);
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.font = '10px "Consolas", "Monaco", monospace';
-                ctx.fillText('μ', 0, 0);
-                ctx.restore();
+                [0, 0.25, 0.5, 0.75, 1].forEach(xf => {           // vertical
+                    const px = ox + xf * PW;
+                    ctx.beginPath(); ctx.moveTo(px, MT); ctx.lineTo(px, oy); ctx.stroke();
+                });
 
-                // ---- X axis baseline ----
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-                ctx.beginPath();
-                ctx.moveTo(ML, MT + PH);
-                ctx.lineTo(ML + PW, MT + PH);
-                ctx.stroke();
-                // Y axis spine
-                ctx.beginPath();
-                ctx.moveTo(ML, MT);
-                ctx.lineTo(ML, MT + PH);
-                ctx.stroke();
-
-                // ---- Each set's membership curve ----
+                // ---- Membership curves (drawn under the axes) ----
                 setNames.forEach((setName, i) => {
                     const fn = engineVar.sets[setName];
                     const color = setColors[i % setColors.length];
@@ -407,7 +385,7 @@
                     for (let p = 0; p <= 100; p++) {
                         const x = min + (max - min) * (p / 100);
                         const mu = fn(x);
-                        const px = ML + (p / 100) * PW;
+                        const px = ox + (p / 100) * PW;
                         const py = MT + (1 - mu) * PH;
                         if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
                     }
@@ -415,29 +393,66 @@
                 });
                 ctx.shadowBlur = 0;
 
-                // ---- X axis tick labels: min / midpoint / max ----
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-                ctx.font = '9px "Consolas", "Monaco", monospace';
-                ctx.textBaseline = 'top';
-                const fmt = (n) => {
-                    // Compact integer; show sign for signed ranges; one decimal for non-integers.
-                    if (Math.abs(n) >= 1 && Number.isInteger(n)) return (n > 0 && min < 0 ? '+' : '') + n;
-                    return (n > 0 && min < 0 ? '+' : '') + (Math.round(n * 10) / 10);
+                // ---- Bold X and Y axis spines with arrowheads ----
+                const arrow = (x, y, dir) => {           // dir: 'up' | 'right'
+                    const s = 5;
+                    ctx.beginPath();
+                    if (dir === 'up')    { ctx.moveTo(x, y - s); ctx.lineTo(x - s, y + s * 0.6); ctx.lineTo(x + s, y + s * 0.6); }
+                    else                 { ctx.moveTo(x + s, y); ctx.lineTo(x - s * 0.6, y - s); ctx.lineTo(x - s * 0.6, y + s); }
+                    ctx.closePath(); ctx.fill();
                 };
-                const mid = (min + max) / 2;
-                ctx.textAlign = 'left';
-                ctx.fillText(fmt(min), ML, MT + PH + 3);
-                ctx.textAlign = 'center';
-                ctx.fillText(fmt(mid), ML + PW / 2, MT + PH + 3);
-                ctx.textAlign = 'right';
-                ctx.fillText(fmt(max), ML + PW, MT + PH + 3);
+                ctx.strokeStyle = AXIS;
+                ctx.fillStyle = AXIS;
+                ctx.lineWidth = 1.5;
+                ctx.lineCap = 'round';
+                // Y spine (extends a touch above the plot for the arrow)
+                ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox, MT - 6); ctx.stroke();
+                arrow(ox, MT - 6, 'up');
+                // X spine (extends a touch right of the plot for the arrow)
+                ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + PW + 6, oy); ctx.stroke();
+                arrow(ox + PW + 6, oy, 'right');
 
-                // ---- X axis title (variable name + units) ----
+                // ---- Y ticks + labels (μ: 0 / 0.5 / 1) ----
+                ctx.font = '9.5px "Consolas", "Monaco", monospace';
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-                ctx.font = '10px "Consolas", "Monaco", monospace';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                [0, 0.5, 1].forEach(yv => {
+                    const py = MT + (1 - yv) * PH;
+                    ctx.strokeStyle = AXIS; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(ox - 4, py); ctx.lineTo(ox, py); ctx.stroke();
+                    ctx.fillText(yv.toFixed(1), ox - 7, py);
+                });
+
+                // ---- X ticks + labels (min / mid / max) ----
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                const mid = (min + max) / 2;
+                [[0, min], [0.5, mid], [1, max]].forEach(([xf, val]) => {
+                    const px = ox + xf * PW;
+                    ctx.strokeStyle = AXIS; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(px, oy); ctx.lineTo(px, oy + 4); ctx.stroke();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                    ctx.fillText(fmt(val), px, oy + 7);
+                });
+
+                // ---- Y axis title: "μ (membership)" rotated up the left edge ----
+                ctx.save();
+                ctx.translate(13, MT + PH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(0, 234, 255, 0.95)';
+                ctx.font = '700 11px "Consolas", "Monaco", monospace';
+                ctx.fillText('μ  (membership)', 0, 0);
+                ctx.restore();
+
+                // ---- X axis title: variable name + units, centered below ----
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
-                ctx.fillText(AXIS_TITLES[varName] || varName, ML + PW / 2, H - 2);
+                ctx.fillStyle = 'rgba(255, 212, 0, 0.95)';
+                ctx.font = '700 10.5px "Consolas", "Monaco", monospace';
+                ctx.fillText(AXIS_TITLES[varName] || varName, ox + PW / 2, H - 3);
             });
             return card;
         }
