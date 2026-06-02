@@ -1,4 +1,8 @@
-/* Race page: full-screen canvas; HUD is painted on the canvas itself. */
+/* Race page: two stacked full-screen canvases.
+ *   #worldCanvas3D — Three.js renders the 3D world (track, cars, props, FX).
+ *   #hudCanvas     — Canvas 2D paints the HUD + phase overlays on top.
+ * The HUD canvas is transparent with pointer-events:none so input still
+ * reaches the page. */
 
 html, body {
     margin: 0;
@@ -8,12 +12,23 @@ html, body {
     height: 100%;
 }
 
-#raceCanvas {
+#worldCanvas3D {
     display: block;
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
+    z-index: 1;
+}
+
+#hudCanvas {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
     cursor: none;
 }
 

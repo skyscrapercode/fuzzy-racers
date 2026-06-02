@@ -55,8 +55,14 @@ const Race = {
     // ============================================================
 
     init() {
-        this.canvas = document.getElementById('raceCanvas');
-        if (!this.canvas) { console.warn('No #raceCanvas'); return; }
+        // Two canvases: a WebGL canvas for the Three.js 3D world, and a
+        // transparent 2D canvas on top for the HUD + phase overlays.
+        this.canvas3d = document.getElementById('worldCanvas3D');
+        this.canvas   = document.getElementById('hudCanvas');
+        if (!this.canvas || !this.canvas3d) {
+            console.warn('Missing #worldCanvas3D / #hudCanvas');
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
 
         // Load config from state
@@ -123,6 +129,11 @@ const Race = {
         // Powerups
         PowerupManager.init(this.track, customization);
 
+        // 3D world (Three.js scene/camera/renderer + track/car/prop meshes).
+        // Built after the cars, track, and powerups exist; per-frame mesh
+        // updates are driven from World3D.render().
+        World3D.init(this.canvas3d, this.track, this.cars, this.player);
+
         // Input
         this._setupInput();
         this._setupInspector();
@@ -147,11 +158,14 @@ const Race = {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const w = window.innerWidth;
         const h = window.innerHeight;
+        // HUD overlay canvas (Canvas 2D)
         this.canvas.width = w * dpr;
         this.canvas.height = h * dpr;
         this.canvas.style.width = w + 'px';
         this.canvas.style.height = h + 'px';
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // 3D world canvas — Three.js manages its own DPR/size
+        if (typeof World3D !== 'undefined' && World3D.handleResize) World3D.handleResize();
     },
 
     _setupInspector() {
@@ -776,36 +790,16 @@ const Race = {
     // ============================================================
 
     _render() {
+        // ---- 3D world (Three.js draws the track, cars, props, powerups,
+        //      projectiles, particles, and effects into worldCanvas3D) ----
+        if (typeof World3D !== 'undefined' && World3D.scene) World3D.render();
+
+        // ---- HUD overlay (Canvas 2D on the transparent top canvas) ----
         const ctx = this.ctx;
         const W = window.innerWidth;
         const H = window.innerHeight;
+        ctx.clearRect(0, 0, W, H);
 
-        // Clear with the track's terrain colour instead of pure black, so
-        // if the world-space floor ever fails to cover the screen edge the
-        // seam is invisible (grass-on-grass / sand-on-sand) instead of
-        // showing props "floating in the black".
-        const tStyle = this.track && this.track.style;
-        ctx.fillStyle = (tStyle && (tStyle.grass || tStyle.sand)) || '#04050a';
-        ctx.fillRect(0, 0, W, H);
-
-        // Camera: centered on player, rotated so player faces "up".
-        ctx.save();
-        ctx.translate(W / 2, H / 2);
-        const camRot = -this.player.angle - Math.PI / 2; // player heading +x; we want +y_screen_up
-        ctx.rotate(camRot);
-        ctx.translate(-this.player.x, -this.player.y);
-
-        Renderer.drawTrack(ctx, this.track);
-        // Track-themed scenery (city buildings, desert cacti/rocks, mountain
-        // pines) sits between the track and the gameplay layer. camRot is
-        // passed so each prop can counter-rotate to stay upright on screen.
-        Renderer.drawTrackProps(ctx, this.track, camRot);
-        PowerupManager.draw(ctx);
-        for (const c of this.cars) Renderer.drawCar(ctx, c, c.customization);
-
-        ctx.restore();
-
-        // HUD overlay (screen space)
         this._drawHUD(ctx, W, H);
 
         // Phase overlays
