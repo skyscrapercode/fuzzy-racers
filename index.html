@@ -29,9 +29,9 @@
                     <span class="btn-icon">⚙️</span>
                     <span>Settings</span>
                 </button>
-                <!-- "How Fuzzy Logic Works" is now the LLM-backed Fuzzy Logic
-                     Assistant, launched from the 🧠 icon in the bottom-right
-                     corner (see js/chatbot.js). -->
+                <!-- "How Fuzzy Logic Works" is now the Fuzzy Logic Assistant,
+                     launched from the 🧠 icon in the bottom-right corner
+                     (see js/chatbot.js). -->
             </div>
         </div>
     </main>
@@ -121,9 +121,10 @@
         </div>
     </div>
 
-    <!-- The "How Fuzzy Logic Works" content is now delivered by the
-         LLM-backed Fuzzy Logic Assistant (bottom-right 🧠 launcher). See
-         js/chatbot.js — it answers the four predefined questions live. -->
+    <!-- The "How Fuzzy Logic Works" content is now delivered by the Fuzzy
+         Logic Assistant (bottom-right 🧠 launcher). See js/chatbot.js — it
+         answers the four predefined questions from built-in content
+         (buttons-only input, deterministic, no network). -->
 
     <script src="js/state.js"></script>
     <script>
@@ -427,7 +428,7 @@
         _rafId = requestAnimationFrame(frame);
     })();
     </script>
-    <!-- LLM-backed Fuzzy Logic Assistant (bottom-right launcher) -->
+    <!-- Fuzzy Logic Assistant (bottom-right launcher) -->
     <script src="js/chatbot.js"></script>
 </body>
 </html>
