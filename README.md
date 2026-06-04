@@ -35,9 +35,8 @@ index.html  →  garage.html  →  race.html  →  results.html
 | ↓ | Brake while moving — keep holding once stopped to **reverse** (capped at ~40% of top speed) |
 | ← / → | Steer (works in reverse too) |
 | Space | Activate held powerup |
-| P | Pause / resume |
+| P / Esc | Open the pause menu — **Resume** the race or **Restart** (back to the Garage) |
 | F | Toggle the in-race AI Fuzzy Brain inspector |
-| Esc | Quit the race back to the Garage |
 
 If the AI gets wedged against a wall it auto-reverses for a moment to free itself, just like you can.
 

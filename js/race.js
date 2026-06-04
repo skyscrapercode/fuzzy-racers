@@ -137,6 +137,7 @@ const Race = {
         // Input
         this._setupInput();
         this._setupInspector();
+        this._setupPauseMenu();
 
         // Resize + start loop
         window.addEventListener('resize', () => this._fitCanvas());
@@ -541,24 +542,13 @@ const Race = {
                     }
                     e.preventDefault();
                 }
-                if (k === 'p' || k === 'P') {
-                    if (this.phase === 'racing') this.phase = 'paused';
-                    else if (this.phase === 'paused') {
-                        this.phase = 'racing';
-                        this.lastFrameTime = performance.now();
-                    }
+                if (k === 'p' || k === 'P' || k === 'Escape' || k === 'Esc') {
+                    // Both P and Esc open/close the themed pause menu.
+                    this._togglePauseMenu();
                     e.preventDefault();
                 }
                 if (k === 'f' || k === 'F') {
                     this._toggleInspector();
-                    e.preventDefault();
-                }
-                if (k === 'Escape' || k === 'Esc') {
-                    // Quit the race and return to the garage. Cancel the loop
-                    // so no stray frames run during navigation.
-                    this._cancelled = true;
-                    if (this._rafId) cancelAnimationFrame(this._rafId);
-                    window.location.href = 'garage.html';
                     e.preventDefault();
                 }
             }
@@ -568,6 +558,48 @@ const Race = {
         };
         window.addEventListener('keydown', handle(true));
         window.addEventListener('keyup',   handle(false));
+    },
+
+    // ============================================================
+    // SECTION: Pause menu (themed DOM overlay)
+    // ============================================================
+
+    _setupPauseMenu() {
+        this.pauseMenuEl  = document.getElementById('pauseMenu');
+        this.pauseMenuOpen = false;
+        if (!this.pauseMenuEl) return;
+        const resume  = document.getElementById('pauseResume');
+        const restart = document.getElementById('pauseRestart');
+        if (resume)  resume.addEventListener('click',  () => this._resumeFromPause());
+        if (restart) restart.addEventListener('click', () => {
+            // "Restart Race" returns to the garage to re-pick and launch again.
+            this._cancelled = true;
+            if (this._rafId) cancelAnimationFrame(this._rafId);
+            window.location.href = 'garage.html';
+        });
+    },
+
+    _togglePauseMenu() {
+        if (this.pauseMenuOpen) this._resumeFromPause();
+        else this._openPauseMenu();
+    },
+
+    _openPauseMenu() {
+        // Don't pause once the race is over / redirecting.
+        if (!this.pauseMenuEl || this.phase === 'finished') return;
+        this.phase = 'paused';
+        this.pauseMenuOpen = true;
+        this.pauseMenuEl.classList.add('open');
+    },
+
+    _resumeFromPause() {
+        if (!this.pauseMenuEl) return;
+        this.pauseMenuEl.classList.remove('open');
+        this.pauseMenuOpen = false;
+        if (this.phase === 'paused') {
+            this.phase = 'racing';
+            this.lastFrameTime = performance.now();
+        }
     },
 
     // ============================================================
@@ -812,7 +844,7 @@ const Race = {
 
         // Phase overlays
         if (this.phase === 'countdown') this._drawCountdown(ctx, W, H);
-        if (this.phase === 'paused')    this._drawPause(ctx, W, H);
+        if (this.phase === 'paused' && !this.pauseMenuOpen) this._drawPause(ctx, W, H);
         if (this.phase === 'finished')  this._drawFinish(ctx, W, H);
     },
 

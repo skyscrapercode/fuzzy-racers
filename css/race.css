@@ -32,6 +32,75 @@ html, body {
     cursor: none;
 }
 
+/* ===================== PAUSE MENU ===================== */
+/* Themed full-screen overlay (Esc / P). Reuses the shared .btn and .key
+   classes from main.css and the theme CSS variables so it matches the
+   menu/garage/results look. Not a .modal (which would suppress the .btn
+   glow via body:has(.modal.open)), so the buttons keep their full theme. */
+
+#pauseMenu {
+    position: fixed;
+    inset: 0;
+    z-index: 200;                 /* above the HUD (10) and inspector (50) */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(2, 3, 8, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+#pauseMenu.open {
+    display: flex;
+    animation: pauseFade 0.2s ease;
+}
+
+@keyframes pauseFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+#pauseMenu .pause-panel {
+    width: min(92vw, 420px);
+    background: #0c0e1a;
+    border: 1px solid var(--panel-border, rgba(255,255,255,0.08));
+    border-radius: var(--radius, 14px);
+    box-shadow: var(--shadow, 0 12px 40px rgba(0,0,0,0.6)), 0 0 40px rgba(0, 234, 255, 0.15);
+    padding: 2.2rem 2.4rem 2rem;
+    text-align: center;
+}
+
+#pauseMenu .pause-title {
+    margin: 0 0 0.25rem;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: var(--glow-cyan, 0 0 8px rgba(0,234,255,0.85), 0 0 22px rgba(0,234,255,0.55));
+}
+
+#pauseMenu .pause-sub {
+    margin: 0 0 1.6rem;
+    color: var(--text-dim, #8a91b4);
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+#pauseMenu .pause-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+#pauseMenu .pause-hint {
+    margin-top: 1.5rem;
+    color: var(--text-mute, #5a6088);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+}
+
 /* ===================== AI FUZZY BRAIN INSPECTOR ===================== */
 /* Live fuzzy-logic visualiser. Docked on the LEFT, scrollable, with a
    live membership-function chart per input (fuzzification), a rule

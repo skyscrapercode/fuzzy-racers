@@ -16,6 +16,23 @@
 
     <aside id="fuzzyInspector" hidden></aside>
 
+    <!-- Pause menu (themed overlay; opened by Esc or P) -->
+    <div id="pauseMenu" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div class="pause-panel">
+            <h2 class="pause-title" id="pause-title">Paused</h2>
+            <p class="pause-sub">Race in progress</p>
+            <div class="pause-actions">
+                <button class="btn" type="button" id="pauseResume">
+                    <span class="btn-icon">▶</span><span>Resume Race</span>
+                </button>
+                <button class="btn" type="button" id="pauseRestart">
+                    <span class="btn-icon">🔄</span><span>Restart Race</span>
+                </button>
+            </div>
+            <div class="pause-hint">Press <span class="key">Esc</span> or <span class="key">P</span> to resume</div>
+        </div>
+    </div>
+
     <script src="js/vendor/three.min.js"></script>
     <script src="js/state.js"></script>
     <script src="js/fuzzy.js"></script>
