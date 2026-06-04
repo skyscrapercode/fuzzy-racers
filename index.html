@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuzzy Racers</title>
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/chatbot.css">
 </head>
 <body>
     <canvas id="bgCanvas"></canvas>
@@ -28,10 +29,9 @@
                     <span class="btn-icon">⚙️</span>
                     <span>Settings</span>
                 </button>
-                <button class="btn" type="button" data-modal="fuzzy">
-                    <span class="btn-icon">🧠</span>
-                    <span>How Fuzzy Logic Works</span>
-                </button>
+                <!-- "How Fuzzy Logic Works" is now the LLM-backed Fuzzy Logic
+                     Assistant, launched from the 🧠 icon in the bottom-right
+                     corner (see js/chatbot.js). -->
             </div>
         </div>
 
@@ -123,61 +123,9 @@
         </div>
     </div>
 
-    <!-- HOW FUZZY LOGIC WORKS MODAL -->
-    <div class="modal" id="modal-fuzzy" role="dialog" aria-modal="true" aria-labelledby="fuzzy-title">
-        <div class="modal-panel">
-            <div class="modal-header">
-                <h2 class="modal-title" id="fuzzy-title">How Fuzzy Logic Works</h2>
-                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
-            </div>
-            <div class="modal-body">
-
-            <section class="modal-section">
-                <h3>What is it?</h3>
-                <p>Fuzzy logic is a way of reasoning with <strong>degrees of truth</strong> rather than hard yes/no answers. A fact like "the player is close" can be <em>0.7 true</em> instead of just true or false, so multiple soft conditions can blend together into a smooth decision.</p>
-            </section>
-
-            <section class="modal-section">
-                <h3>Why use it for racing AI?</h3>
-                <p>Race telemetry is continuous and messy — distance, speed, cornering, health, gap. A traditional if/else AI either explodes with edge cases or jerks between behaviors at hard thresholds. A fuzzy controller weighs every signal at once and produces a <strong>smooth, defensible action</strong> — exactly what you want from a believable opponent.</p>
-            </section>
-
-            <section class="modal-section">
-                <h3>The 3-step pipeline</h3>
-                <div class="fuzzy-diagram" aria-label="Fuzzification, Rule Evaluation, Defuzzification">
-                    <div class="fz-step s1">
-                        <div class="fz-num">STEP 1</div>
-                        <div class="fz-name">Fuzzification</div>
-                        <div class="fz-text">Raw race telemetry (distance px, speed px/s, health HP…) is converted into degrees of membership in fuzzy sets like <em>very_close</em>, <em>fast</em>, <em>critical</em>.</div>
-                    </div>
-                    <div class="fz-arrow">▸</div>
-                    <div class="fz-step s2">
-                        <div class="fz-num">STEP 2</div>
-                        <div class="fz-name">Rule Evaluation</div>
-                        <div class="fz-text">33 rules of the form <em>IF … THEN …</em> fire in parallel. Each rule's strength is the min() of its conditions (Mamdani AND). Multiple rules can fire on the same output, and the activations are aggregated by max().</div>
-                    </div>
-                    <div class="fz-arrow">▸</div>
-                    <div class="fz-step s3">
-                        <div class="fz-num">STEP 3</div>
-                        <div class="fz-name">Defuzzification</div>
-                        <div class="fz-text">The aggregate output membership curve is collapsed to a single crisp number via the <em>centroid</em> method. That number becomes the AI's throttle / brake / steering command for this tick.</div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="modal-section">
-                <h3>What in this game is fuzzy?</h3>
-                <ul class="fz-bullets">
-                    <li><strong>Speed control</strong> — throttle and brake are chosen by corner sharpness and distance to the player, not hard thresholds.</li>
-                    <li><strong>Powerup timing</strong> — when to fire a held powerup is computed from gap, health, and "powerup ready" simultaneously.</li>
-                    <li><strong>Aggression</strong> — the AI's overall posture (defensive vs. attacking) is a fuzzy blend of gap, health and proximity.</li>
-                    <li><strong>Braking under risk</strong> — at critical health the AI brakes earlier and softens aggression even on straight track.</li>
-                </ul>
-                <p style="margin-top: 0.6rem;">Press <span class="key">F</span> during a race to open the in-race fuzzy inspector and watch the engine think live.</p>
-            </section>
-            </div>
-        </div>
-    </div>
+    <!-- The "How Fuzzy Logic Works" content is now delivered by the
+         LLM-backed Fuzzy Logic Assistant (bottom-right 🧠 launcher). See
+         js/chatbot.js — it answers the four predefined questions live. -->
 
     <script src="js/state.js"></script>
     <script>
@@ -481,5 +429,7 @@
         _rafId = requestAnimationFrame(frame);
     })();
     </script>
+    <!-- LLM-backed Fuzzy Logic Assistant (bottom-right launcher) -->
+    <script src="js/chatbot.js"></script>
 </body>
 </html>
