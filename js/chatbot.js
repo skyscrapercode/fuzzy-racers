@@ -97,9 +97,9 @@
         fab = document.createElement('button');
         fab.className = 'fla-fab';
         fab.type = 'button';
-        fab.setAttribute('aria-label', 'How Fuzzy Logic Works');
+        fab.setAttribute('aria-label', 'Fuzzy Logic Assistant');
         fab.innerHTML = '<span class="fla-fab-icon">🧠</span>'
-                      + '<span class="fla-fab-label">How Fuzzy Logic Works</span>';
+                      + '<span class="fla-fab-label">Fuzzy Logic Assistant</span>';
         document.body.appendChild(fab);
 
         // Chat panel.
