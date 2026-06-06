@@ -348,6 +348,7 @@ class Projectile {
             const dx = c.x - this.x, dy = c.y - this.y;
             if (dx*dx + dy*dy < (c.radius + 10) * (c.radius + 10)) {
                 c.takeDamage(this.damage);
+                if (typeof AudioManager !== 'undefined') AudioManager.hit();
                 if (particles) Particles.spawnExplosion(particles, this.x, this.y, '#ff8800');
                 this.alive = false;
                 return;

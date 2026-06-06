@@ -49,6 +49,7 @@ If the AI gets wedged against a wall it auto-reverses for a moment to free itsel
 - **Customization-matched car**: the 3D model mirrors your garage choices, including chassis silhouette (sedan/muscle/compact/truck/wedge/coupe), body kit (aero rear wing, armored side bars, or stealth low-profile), paint-job pattern (racing stripes, flame, or camo), and the paint plus accent colours.
 - **8 powerups**: Speed Boost, Shield, Homing Missile (15 HP), Oil Slick, EMP Blast, Repair Kit, Tornado, and Nitro Surge (requires the Nitro Engine). Each has a 3D in-world effect (missile, oil decal, EMP ring, tornado funnel, shield bubble, boost/nitro flames, particles).
 - **Damage and explosions**: cars take damage from missiles and heavy collisions (`maxHealth = armor x 15`); reaching 0 HP detonates the car into a charred wreck and hands the win to the opponent (a KO).
+- **Procedural audio**: every sound is synthesised live with the Web Audio API: there are no audio files. A speed-tracking engine hum, tyre screech, powerup pickup/use cues, missile and collision impacts, explosions, countdown beeps, lap and finish jingles, plus a small generative music loop (one theme for the menu, one for races). The **Master Volume** setting now actually mutes/unmutes the game (it drives a master gain node) and persists across pages.
 - **Pause menu**: P or Esc opens a themed overlay to Resume or Restart the race.
 - **Fuzzy Logic Assistant**: an in-page chatbot that explains the fuzzy logic (see below).
 - **Live fuzzy inspector** and a **post-race fuzzy summary** (see below).
@@ -129,6 +130,7 @@ The results page shows:
     │   └── postprocessing.js  Three.js r128 bloom add-ons (EffectComposer / UnrealBloomPass)
     ├── device-guard.js  desktop-only guard (loaded first on every page)
     ├── state.js         localStorage state (loaded first on every page)
+    ├── audio.js         procedural Web Audio engine (SFX + generative music)
     ├── fuzzy.js         Mamdani fuzzy inference engine + 33-rule base
     ├── car.js           car roster, customization registries, runtime physics
     ├── ai.js            fuzzy-driven AI controller (per-difficulty tick)

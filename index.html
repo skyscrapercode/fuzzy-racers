@@ -129,15 +129,27 @@
 
     <script src="js/device-guard.js"></script>
     <script src="js/state.js"></script>
+    <script src="js/audio.js"></script>
     <script>
     (function () {
         'use strict';
 
-        // ---------- Settings (persisted via state.js when wired up) ----------
+        // ---------- Settings (persisted via state.js) ----------
+        const _saved = (typeof State !== 'undefined' && State.get('settings')) || {};
         const settings = {
-            volume: true,
-            quality: 'high'
+            volume:  _saved.volume !== false,        // default on
+            quality: _saved.quality || 'high'
         };
+        function saveSettings() {
+            if (typeof State !== 'undefined') {
+                State.set('settings', { volume: settings.volume, quality: settings.quality });
+            }
+        }
+
+        // Menu music + SFX: unlock the audio context on the first gesture.
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.attachUnlock({ music: 'menu' });
+        }
 
         // ---------- Modal handling ----------
         const modals = document.querySelectorAll('.modal');
@@ -163,20 +175,26 @@
             if (e.key === 'Escape') closeModals();
         });
 
-        // Volume toggle
+        // Volume toggle: reflect saved state, persist, and drive the audio.
         const volToggle = document.getElementById('toggle-volume');
+        volToggle.classList.toggle('on', settings.volume);
+        volToggle.setAttribute('aria-checked', String(settings.volume));
         volToggle.addEventListener('click', () => {
             settings.volume = !settings.volume;
             volToggle.classList.toggle('on', settings.volume);
             volToggle.setAttribute('aria-checked', String(settings.volume));
+            saveSettings();
+            if (typeof AudioManager !== 'undefined') AudioManager.setEnabled(settings.volume);
         });
 
-        // Quality segmented
+        // Quality segmented: reflect saved state and persist on change.
         document.querySelectorAll('#seg-quality button').forEach(b => {
+            b.classList.toggle('active', b.dataset.quality === settings.quality);
             b.addEventListener('click', () => {
                 document.querySelectorAll('#seg-quality button').forEach(x => x.classList.remove('active'));
                 b.classList.add('active');
                 settings.quality = b.dataset.quality;
+                saveSettings();
             });
         });
 
