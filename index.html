@@ -12,11 +12,12 @@
     <canvas id="bgCanvas"></canvas>
 
     <main id="menu">
-        <!-- Title is drawn on the background canvas; this empty top row keeps the layout grid aligned. -->
+        <!-- Title AND tagline are painted on the background canvas (drawTitle),
+             so they stay a consistent lockup at any aspect ratio. This row just
+             reserves the space above the centered buttons. -->
         <div class="menu-top-spacer"></div>
 
         <div class="menu-center">
-            <div class="menu-tagline">Fuzzy Logic Combat Racing</div>
             <div class="menu-buttons">
                 <a class="btn" href="garage.html">
                     <span class="btn-icon">🏁</span>
@@ -185,6 +186,12 @@
         const ctx = canvas.getContext('2d');
         let W = 0, H = 0, dpr = 1;
 
+        // Respect the OS "reduce motion" preference: animations hold still.
+        const _rmq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let reduceMotion = _rmq.matches;
+        _rmq.addEventListener('change', e => { reduceMotion = e.matches; });
+        let gridScroll = 0;   // animates the perspective floor toward the viewer
+
         function resize() {
             dpr = Math.min(window.devicePixelRatio || 1, 2);
             W = window.innerWidth;
@@ -224,6 +231,69 @@
             return { x, y, ang };
         }
 
+        // ---------- Synthwave perspective grid (background depth) ----------
+        function drawGrid(dt) {
+            const hq = settings.quality === 'high';
+            const hy = H * 0.34;          // horizon line
+            const vx = W * 0.5;           // vanishing point x
+            ctx.save();
+
+            // Horizon glow bar (cyan -> magenta -> cyan).
+            const hg = ctx.createLinearGradient(0, hy, W, hy);
+            hg.addColorStop(0.0, 'rgba(0, 234, 255, 0)');
+            hg.addColorStop(0.5, 'rgba(255, 43, 214, 0.45)');
+            hg.addColorStop(1.0, 'rgba(0, 234, 255, 0)');
+            ctx.strokeStyle = hg;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#ff2bd6';
+            ctx.shadowBlur = hq ? 24 : 0;
+            ctx.beginPath();
+            ctx.moveTo(0, hy); ctx.lineTo(W, hy);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Floor lines live below the horizon; keep them faint so the
+            // foreground (title, track, cars) stays the focus.
+            ctx.lineWidth = 1;
+
+            // Converging vertical lines -> vanishing point.
+            ctx.strokeStyle = 'rgba(0, 234, 255, 0.10)';
+            const cols = 18;
+            ctx.beginPath();
+            for (let i = -cols; i <= cols; i++) {
+                const bx = vx + (i / cols) * (W * 1.3);
+                ctx.moveTo(bx, H);
+                ctx.lineTo(vx, hy);
+            }
+            ctx.stroke();
+
+            // Horizontal receding lines, bunched near the horizon (frac^2) and
+            // scrolling toward the viewer for a sense of motion.
+            if (!reduceMotion) gridScroll = (gridScroll + dt * 0.25) % 1;
+            const rows = 16;
+            for (let i = 0; i < rows; i++) {
+                const frac = (i + gridScroll) / rows;     // 0 (horizon) .. 1 (near)
+                const yy = hy + (H - hy) * frac * frac;
+                ctx.strokeStyle = 'rgba(0, 234, 255, ' + (0.04 + frac * 0.12).toFixed(3) + ')';
+                ctx.beginPath();
+                ctx.moveTo(0, yy); ctx.lineTo(W, yy);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // ---------- Vignette (drawn last; focuses the centre) ----------
+        function drawVignette() {
+            const g = ctx.createRadialGradient(
+                W * 0.5, H * 0.5, Math.min(W, H) * 0.28,
+                W * 0.5, H * 0.5, Math.max(W, H) * 0.72
+            );
+            g.addColorStop(0, 'rgba(2, 3, 8, 0)');
+            g.addColorStop(1, 'rgba(2, 3, 8, 0.55)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, W, H);
+        }
+
         function drawTrack() {
             // Outer asphalt
             ctx.save();
@@ -246,6 +316,27 @@
             ctx.strokeStyle = 'rgba(0, 234, 255, 0.05)';
             ctx.lineWidth = 78;
             ctx.stroke();
+
+            // Glowing neon edges hugging both road borders (mirrors the 3D
+            // race world's neon edge strips).
+            const hq = settings.quality === 'high';
+            const halfRoad = 39;
+            for (const [off, col] of [[halfRoad, '#00eaff'], [-halfRoad, '#ff2bd6']]) {
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = col;
+                ctx.shadowBlur = hq ? 12 : 0;
+                ctx.beginPath();
+                for (let i = 0; i <= 120; i++) {
+                    const a = (i / 120) * Math.PI * 2;
+                    const x = track.cx + Math.cos(a) * (track.rx + off);
+                    const y = track.cy + Math.sin(a) * (track.ry + off);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
 
             // Dashed center line
             ctx.setLineDash([18, 22]);
@@ -272,7 +363,8 @@
                     t: i / n,
                     speed: 0.06 + Math.random() * 0.04, // laps per second
                     color: carColors[i % carColors.length],
-                    lane: (i % 2 === 0 ? -1 : 1) * 8
+                    lane: (i % 2 === 0 ? -1 : 1) * 8,
+                    trail: []
                 });
             }
         }
@@ -283,12 +375,32 @@
                 c.t = (c.t + c.speed * dt) % 1;
                 const p = trackPoint(c.t);
                 // Lane offset perpendicular to tangent
-                const nx = -Math.sin(p.ang - Math.PI / 2) * 0; // unused; placeholder
                 const ox = Math.cos(p.ang + Math.PI / 2) * c.lane;
                 const oy = Math.sin(p.ang + Math.PI / 2) * c.lane;
+                const cxp = p.x + ox, cyp = p.y + oy;
+
+                // Light trail: a short fading neon streak behind the car.
+                c.trail.push({ x: cxp, y: cyp });
+                if (c.trail.length > 10) c.trail.shift();
+                if (settings.quality === 'high' && c.trail.length > 1) {
+                    ctx.save();
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = c.color;
+                    ctx.shadowColor = c.color;
+                    ctx.shadowBlur = 10;
+                    for (let j = 1; j < c.trail.length; j++) {
+                        ctx.globalAlpha = (j / c.trail.length) * 0.5;
+                        ctx.lineWidth = (j / c.trail.length) * 6;
+                        ctx.beginPath();
+                        ctx.moveTo(c.trail[j - 1].x, c.trail[j - 1].y);
+                        ctx.lineTo(c.trail[j].x, c.trail[j].y);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
 
                 ctx.save();
-                ctx.translate(p.x + ox, p.y + oy);
+                ctx.translate(cxp, cyp);
                 ctx.rotate(p.ang);
                 // Shadow
                 ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -313,7 +425,9 @@
         // ---------- Particles (speed streaks behind title) ----------
         const particles = [];
         function spawnParticle() {
-            const titleY = H * 0.28;
+            // Sit the streaks in the band between the tagline and the track,
+            // so they don't crowd the title/tagline lockup near the top.
+            const titleY = H * 0.42;
             const side = Math.random() < 0.5 ? -1 : 1;
             particles.push({
                 x: W * 0.5 + side * (W * 0.05 + Math.random() * W * 0.1),
@@ -356,42 +470,80 @@
         // ---------- Title text ----------
         let titlePulse = 0;
         function drawTitle() {
-            titlePulse += 0.04;
+            if (!reduceMotion) titlePulse += 0.04;
             const pulse = 0.5 + 0.5 * Math.sin(titlePulse);
+            const hq = settings.quality === 'high';
 
             // Title sits in the upper portion of the screen, comfortably above
             // the animated track (which is centered around y = H * 0.68).
             const cx = W * 0.5;
             const cy = H * 0.18;
-
             const size = Math.min(W * 0.12, 148);
+            const text = 'FUZZY RACERS';
+            const font = 'italic 900 ' + size + 'px "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = '900 ' + size + 'px "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+            ctx.font = font;
 
-            // Outer cyan glow
+            // Outer cyan + magenta glow (chromatic neon-sign feel).
             ctx.shadowColor = '#00eaff';
-            ctx.shadowBlur = settings.quality === 'high' ? 40 + pulse * 20 : 0;
+            ctx.shadowBlur = hq ? 40 + pulse * 20 : 0;
             ctx.fillStyle = '#0b1320';
-            ctx.fillText('FUZZY RACERS', cx, cy);
-
-            // Magenta secondary glow (offset slightly for chromatic feel)
+            ctx.fillText(text, cx, cy);
             ctx.shadowColor = '#ff2bd6';
-            ctx.shadowBlur = settings.quality === 'high' ? 28 : 0;
-            ctx.fillStyle = '#0b1320';
-            ctx.fillText('FUZZY RACERS', cx + 2, cy);
+            ctx.shadowBlur = hq ? 28 : 0;
+            ctx.fillText(text, cx + 2, cy);
 
-            // Main fill: bright cyan stroke + white core
+            // Core fill: a vertical cyan -> white -> magenta gradient.
             ctx.shadowBlur = 0;
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#00eaff';
-            ctx.strokeText('FUZZY RACERS', cx, cy);
+            const core = ctx.createLinearGradient(0, cy - size * 0.5, 0, cy + size * 0.5);
+            core.addColorStop(0.0, '#7df9ff');
+            core.addColorStop(0.5, '#eafcff');
+            core.addColorStop(1.0, '#ff8ae6');
+            ctx.fillStyle = core;
+            ctx.fillText(text, cx, cy);
 
-            ctx.fillStyle = '#eafcff';
+            // Crisp cyan outline.
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#00eaff';
             ctx.shadowColor = '#00eaff';
-            ctx.shadowBlur = settings.quality === 'high' ? 18 : 0;
-            ctx.fillText('FUZZY RACERS', cx, cy);
+            ctx.shadowBlur = hq ? 12 : 0;
+            ctx.strokeText(text, cx, cy);
+            ctx.shadowBlur = 0;
+
+            // Moving highlight sweep across the letters.
+            if (hq && !reduceMotion) {
+                const w = ctx.measureText(text).width;
+                const sweep = (titlePulse * 0.12) % 1.4 - 0.2;   // travels across, with a pause
+                const sx = cx - w / 2 + w * sweep;
+                const sg = ctx.createLinearGradient(sx - 70, 0, sx + 70, 0);
+                sg.addColorStop(0.0, 'rgba(255,255,255,0)');
+                sg.addColorStop(0.5, 'rgba(255,255,255,0.7)');
+                sg.addColorStop(1.0, 'rgba(255,255,255,0)');
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = sg;
+                ctx.fillText(text, cx, cy);
+                ctx.restore();
+            }
+
+            // Subtitle, drawn in the SAME coordinate system as the title so the
+            // two always form a consistent lockup at any aspect ratio (this is
+            // why the tagline lives on the canvas, not in the HTML flow).
+            const subSize = Math.max(11, Math.min(size * 0.16, 20));
+            const subY = cy + size * 0.5 + subSize * 1.7;
+            ctx.font = '600 ' + subSize + 'px "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+            ctx.letterSpacing = '0.45em';
+            ctx.fillStyle = '#cdeaff';
+            ctx.shadowColor = 'rgba(0, 234, 255, 0.55)';
+            ctx.shadowBlur = hq ? 10 : 0;
+            // The CSS letter-spacing adds trailing space after the last glyph;
+            // nudge left by half a step so the spaced text stays optically centred.
+            ctx.fillText('FUZZY LOGIC COMBAT RACING', cx - subSize * 0.22, subY);
+            ctx.letterSpacing = '0px';
+            ctx.shadowBlur = 0;
 
             ctx.restore();
         }
@@ -418,10 +570,12 @@
             ctx.fillStyle = bg;
             ctx.fillRect(0, 0, W, H);
 
+            drawGrid(dt);
             drawTrack();
             drawCars(dt);
             drawParticles(dt);
             drawTitle();
+            drawVignette();
 
             _rafId = requestAnimationFrame(frame);
         }
