@@ -18,9 +18,13 @@
  *      Build the scene once:
  *        - off-track ground plane
  *        - road ribbon (one BufferGeometry mesh from the geom's outer/inner)
+ *          with UVs and a tiling procedural asphalt CanvasTexture
  *        - curbs (thin raised ribbons just outside the road)
+ *        - glowing neon strips along both road edges (additive, bloomed)
  *        - start/finish chequered tiles
  *        - one Group per Car (body + cockpit + wheels + lights)
+ *        - an EffectComposer with an UnrealBloomPass for the neon glow
+ *          (skipped on Low quality / if the add-ons are missing)
  *      Powerup-box meshes are created lazily inside render().
  *
  *  World3D.render()
@@ -29,7 +33,7 @@
  *        - sync powerup-box meshes (lazy create / remove on collect)
  *        - chase camera lerps to a target behind+above the player and
  *          looks at a point slightly in front of the player
- *        - WebGL renders the scene
+ *        - renders through the bloom composer (or the plain renderer on Low)
  *
  *  Cars stay logically 2D: physics, AI, lap accounting are all unchanged.
  *  Only rendering changes.
@@ -41,6 +45,11 @@ const World3D = {
     scene: null,
     renderer: null,
     camera: null,
+
+    // Post-processing (neon bloom). composer is null if the add-ons failed
+    // to load, in which case render() falls back to a plain renderer.render().
+    composer: null,
+    bloomPass: null,
 
     // Game refs
     track: null,
@@ -86,6 +95,9 @@ const World3D = {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
+        // No tone mapping: keep the original (darker, more saturated) sky and
+        // scene look. The neon edges still glow because their additive,
+        // tone-map-exempt material drives the bloom pass directly.
 
         // ---- Scene + sky/fog (per-track colour) ----
         this.scene = new THREE.Scene();
@@ -143,6 +155,9 @@ const World3D = {
         // ---- Red/white striped tiles on the outer curb at sharp corners ----
         this.scene.add(this._buildCornerStripes(trackGeom));
 
+        // ---- Glowing neon strips along both road edges ----
+        this.scene.add(this._buildNeonEdges(trackGeom));
+
         // ---- Track-themed scenery (buildings / cacti / pine trees) ----
         this.scene.add(this._buildTrackProps(trackGeom));
 
@@ -152,25 +167,141 @@ const World3D = {
             this.carMeshes.set(car, mesh);
             this.scene.add(mesh);
         }
+
+        // ---- Post-processing (neon bloom) ----
+        this._initPostFX();
+    },
+
+    /** Set up an EffectComposer with a bloom pass so emissive / bright
+     *  surfaces (headlights, neon edges, powerup crates, flames, lane lines)
+     *  glow. Degrades gracefully: if the vendored add-ons are missing,
+     *  composer stays null and render() uses the plain renderer. */
+    _initPostFX() {
+        // Respect the Settings "Visual Quality" toggle: on Low, skip the bloom
+        // pass entirely (plain renderer) so weaker GPUs stay smooth.
+        const quality = (typeof State !== 'undefined' && State.get('settings'))
+            ? State.get('settings').quality : 'high';
+        if (quality === 'low' ||
+            typeof THREE.EffectComposer !== 'function' ||
+            typeof THREE.UnrealBloomPass !== 'function' ||
+            typeof THREE.RenderPass !== 'function') {
+            this.composer = null;
+            return;
+        }
+        const W = window.innerWidth, H = window.innerHeight;
+        const composer = new THREE.EffectComposer(this.renderer);
+        composer.setSize(W, H);
+        composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+        // strength, radius, threshold: a high threshold means only genuinely
+        // bright pixels bloom, so the dark road/ground stay crisp.
+        // Threshold kept high so lit surfaces (the car body, buildings) do not
+        // bloom; the neon edges still glow because their additive, tone-map-
+        // exempt material pushes those pixels well past the threshold anyway.
+        const bloom = new THREE.UnrealBloomPass(
+            new THREE.Vector2(W, H), 0.55, 0.4, 0.8
+        );
+        composer.addPass(bloom);
+        this.composer = composer;
+        this.bloomPass = bloom;
+    },
+
+    /** Neon edge color per track (the glow that lines both road borders). */
+    _neonEdgeColor(geom) {
+        return geom.id === 'desert'   ? 0xff8a3c   // warm sand neon
+             : geom.id === 'mountain' ? 0x6affd6   // icy teal
+             : 0x00eaff;                            // city cyan
+    },
+
+    /** Thin, fully-bright strips hugging the outer and inner road edges.
+     *  MeshBasicMaterial keeps them at full luminance so the bloom pass turns
+     *  them into a neon glow that traces the circuit. */
+    _buildNeonEdges(geom) {
+        const { outer, inner } = geom;
+        const N = outer.length;
+        const positions = [];
+        const indices = [];
+        const stripW = 3;     // lateral width of the glow strip
+        const elev   = 0.30;  // just above the road surface (below the curbs)
+
+        // sign aims the strip toward the road centre so it lies ON the track
+        // surface hugging the edge (not under the taller curb just outside it).
+        const buildSide = (line, sign) => {
+            const baseIdx = positions.length / 3;
+            for (let i = 0; i < N; i++) {
+                const a = line[(i - 1 + N) % N];
+                const b = line[(i + 1) % N];
+                const tx = b.x - a.x, ty = b.y - a.y;
+                const len = Math.hypot(tx, ty) || 1;
+                const nx = -ty / len * sign, ny = tx / len * sign;
+                const p = line[i];
+                // One rail on the road edge, the other inset toward centre.
+                positions.push(p.x,                  elev, p.y);
+                positions.push(p.x + nx * stripW,    elev, p.y + ny * stripW);
+            }
+            for (let i = 0; i < N; i++) {
+                const a = baseIdx + i * 2;
+                const b = baseIdx + i * 2 + 1;
+                const c = baseIdx + ((i + 1) % N) * 2;
+                const d = baseIdx + ((i + 1) % N) * 2 + 1;
+                indices.push(a, b, d, a, d, c);
+            }
+        };
+        buildSide(outer, -1);   // outer edge: glow runs inward onto the road
+        buildSide(inner, +1);   // inner edge: glow runs inward onto the road
+
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        g.setIndex(indices);
+        g.computeVertexNormals();
+        // Additive + tone-map-exempt so the strip stays at full neon intensity
+        // (ACES would otherwise dim it below the bloom threshold) and the bloom
+        // pass turns it into a glowing rim that traces the circuit.
+        const m = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(this._neonEdgeColor(geom)),
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            toneMapped: false
+        });
+        return new THREE.Mesh(g, m);
     },
 
     // ============================================================
     // SECTION: Geometry builders
     // ============================================================
 
-    /** Road ribbon from outer/inner waypoint pairs. */
+    /** Road ribbon from outer/inner waypoint pairs, with UVs so a tiling
+     *  asphalt CanvasTexture maps across it (u runs along the lap, v across
+     *  the road width). The base road colour is baked into the texture, so the
+     *  material colour stays white. */
     _buildRoadMesh(geom) {
         const { outer, inner, style } = geom;
         const N = outer.length;
         const positions = new Float32Array(N * 2 * 3);
+        const uvs       = new Float32Array(N * 2 * 2);
         const indices  = [];
+        const tileLen   = 60;   // world units per texture tile (keeps texels ~square)
+        let cum = 0;            // cumulative distance along the outer edge → u
         for (let i = 0; i < N; i++) {
-            positions[i * 6 + 0] = outer[i].x;
+            const o = outer[i], in_ = inner[i];
+            positions[i * 6 + 0] = o.x;
             positions[i * 6 + 1] = 0.05;
-            positions[i * 6 + 2] = outer[i].y;
-            positions[i * 6 + 3] = inner[i].x;
+            positions[i * 6 + 2] = o.y;
+            positions[i * 6 + 3] = in_.x;
             positions[i * 6 + 4] = 0.05;
-            positions[i * 6 + 5] = inner[i].y;
+            positions[i * 6 + 5] = in_.y;
+
+            if (i > 0) {
+                const p = outer[i - 1];
+                cum += Math.hypot(o.x - p.x, o.y - p.y);
+            }
+            const u = cum / tileLen;
+            // v spans the local road width so texels stay roughly square.
+            const width = Math.hypot(in_.x - o.x, in_.y - o.y);
+            uvs[i * 4 + 0] = u;  uvs[i * 4 + 1] = 0;
+            uvs[i * 4 + 2] = u;  uvs[i * 4 + 3] = width / tileLen;
         }
         for (let i = 0; i < N; i++) {
             const a = i * 2;
@@ -181,14 +312,52 @@ const World3D = {
         }
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
         g.setIndex(indices);
         g.computeVertexNormals();
         const m = new THREE.MeshLambertMaterial({
-            color: new THREE.Color(style.road || '#2a2f44'),
+            color: 0xffffff,
+            map: this._makeRoadTexture(style.road || '#2a2f44'),
             side: THREE.DoubleSide
         });
-        const mesh = new THREE.Mesh(g, m);
-        return mesh;
+        return new THREE.Mesh(g, m);
+    },
+
+    /** Tiling asphalt texture: the base road colour plus fine speckle grain and
+     *  a couple of faint lengthwise streaks, so the road reads as a real
+     *  surface instead of a flat slab. Procedural (no image files). */
+    _makeRoadTexture(roadHex) {
+        const S = 128;
+        const c = document.createElement('canvas');
+        c.width = c.height = S;
+        const ctx = c.getContext('2d');
+        // Base coat.
+        ctx.fillStyle = roadHex;
+        ctx.fillRect(0, 0, S, S);
+        // Speckle grain: many tiny lighter/darker flecks (deterministic-ish).
+        let seed = 1337;
+        const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+        for (let i = 0; i < 1400; i++) {
+            const x = rnd() * S, y = rnd() * S;
+            const lighten = rnd() > 0.5;
+            ctx.fillStyle = lighten
+                ? 'rgba(255,255,255,' + (0.02 + rnd() * 0.05).toFixed(3) + ')'
+                : 'rgba(0,0,0,'       + (0.04 + rnd() * 0.08).toFixed(3) + ')';
+            const r = 0.5 + rnd() * 1.2;
+            ctx.fillRect(x, y, r, r);
+        }
+        // A couple of faint longitudinal streaks (tyre-worn lanes).
+        ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+        ctx.lineWidth = 2;
+        for (const vx of [S * 0.34, S * 0.66]) {
+            ctx.beginPath(); ctx.moveTo(vx, 0); ctx.lineTo(vx, S); ctx.stroke();
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.anisotropy = (this.renderer && this.renderer.capabilities)
+            ? this.renderer.capabilities.getMaxAnisotropy() : 1;
+        tex.needsUpdate = true;
+        return tex;
     },
 
     /** Two thin raised ribbons on the outer and inner edges of the road. */
@@ -795,8 +964,12 @@ const World3D = {
         this._camTargetLook.lerp(lookTarget, 0.22);
         this.camera.lookAt(this._camTargetLook);
 
-        // ---- Render ----
-        this.renderer.render(this.scene, this.camera);
+        // ---- Render (through the bloom composer when available) ----
+        if (this.composer) {
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
     },
 
     // ============================================================
@@ -1219,6 +1392,8 @@ const World3D = {
         this.renderer.setSize(W, H, false);
         this.camera.aspect = W / H;
         this.camera.updateProjectionMatrix();
+        if (this.composer) this.composer.setSize(W, H);
+        if (this.bloomPass && this.bloomPass.setSize) this.bloomPass.setSize(W, H);
     }
 };
 

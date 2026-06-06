@@ -44,7 +44,7 @@ If the AI gets wedged against a wall it auto-reverses for a moment to free itsel
 
 ## Features
 
-- **3D race world**: chase camera behind/above the player, per-track sky colour and fog, a road ribbon with raised curbs, a chequered start line, a dashed centerline, and a soft contact shadow under every car.
+- **3D race world**: chase camera behind/above the player, per-track sky colour and fog, a textured asphalt road ribbon with raised curbs, glowing per-track neon edge strips, a chequered start line, a dashed centerline, and a soft contact shadow under every car. The scene is finished with a bloom pass so lights, neon edges, powerup crates, and effects glow (bloom is skipped automatically on the Low visual-quality setting).
 - **Track-themed 3D scenery**: city skyline of lit-window buildings, desert saguaro cacti and rocks, mountain pine forest, plus red/white curb stripes on sharp corners. Layouts are deterministic per track.
 - **Customization-matched car**: the 3D model mirrors your garage choices, including chassis silhouette (sedan/muscle/compact/truck/wedge/coupe), body kit (aero rear wing, armored side bars, or stealth low-profile), paint-job pattern (racing stripes, flame, or camo), and the paint plus accent colours.
 - **8 powerups**: Speed Boost, Shield, Homing Missile (15 HP), Oil Slick, EMP Blast, Repair Kit, Tornado, and Nitro Surge (requires the Nitro Engine). Each has a 3D in-world effect (missile, oil decal, EMP ring, tornado funnel, shield bubble, boost/nitro flames, particles).
@@ -125,7 +125,8 @@ The results page shows:
 │   └── chatbot.css     Fuzzy Logic Assistant launcher + panel
 └── js/
     ├── vendor/
-    │   └── three.min.js   Three.js r128 (vendored for offline use)
+    │   ├── three.min.js       Three.js r128 (vendored for offline use)
+    │   └── postprocessing.js  Three.js r128 bloom add-ons (EffectComposer / UnrealBloomPass)
     ├── device-guard.js  desktop-only guard (loaded first on every page)
     ├── state.js         localStorage state (loaded first on every page)
     ├── fuzzy.js         Mamdani fuzzy inference engine + 33-rule base
