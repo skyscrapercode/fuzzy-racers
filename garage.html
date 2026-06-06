@@ -210,8 +210,8 @@
                 <p>For the <code>use_powerup</code> output the crisp number is <em>not</em> compared against a single global threshold the firing decision is made per powerup category by <code>PowerupManager.shouldAIUsePowerup()</code>:</p>
                 <ul>
                     <li><strong>Aggressive</strong> (missile, oil, EMP, tornado): <code>use_powerup &gt; 55</code> <em>and</em> the AI is losing <em>and</em> the player is either close or far enough ahead to be worth targeting.</li>
-                    <li><strong>Defensive: shield</strong>: <code>use_powerup &gt; 50</code> <em>and</em> (low HP or close-contact-while-losing).</li>
-                    <li><strong>Defensive: repair</strong>: fires below 45 % HP regardless of fuzzy score.</li>
+                    <li><strong>Defensive Shield</strong>: <code>use_powerup &gt; 50</code> <em>and</em> (low HP or close-contact-while-losing).</li>
+                    <li><strong>Defensive Repair</strong>: fires below 45 % HP regardless of fuzzy score.</li>
                     <li><strong>Speed</strong> (boost, nitro): <code>use_powerup &gt; 50</code> on a near-straight while losing, or <code>&gt; 85</code> as a panic-fire.</li>
                 </ul>
             </section>
@@ -220,10 +220,10 @@
                 <h2>Behaviour Layered on Top of Fuzzy Outputs</h2>
                 <p>The fuzzy engine produces the AI's <em>intent</em>. Three deterministic behaviours wrap that intent inside <code>js/ai.js</code> before it reaches the car:</p>
                 <ul>
-                    <li><strong>Per-tick noise</strong> outputs are jittered by ±noise% (Rookie ±20%, Racer ±10%, Champion ±3%) to model human imperfection.</li>
-                    <li><strong>Rubber-banding</strong> throttle is multiplied by a difficulty-dependent factor that grows when the AI is behind the player and shrinks slightly when it's far ahead. Strength is set by the chosen difficulty.</li>
-                    <li><strong>Stuck-against-wall auto-reverse</strong> if the AI tries to throttle forward but barely moves for 0.7 s, the controller overrides the fuzzy outputs with a 700 ms burst of full brake (which the car physics interprets as reverse acceleration at low speed) with inverted steering at 60 % magnitude. After the burst the fuzzy controller resumes normally.</li>
-                    <li><strong>Champion-only: predict player powerup</strong> when the player picks up a powerup, a Champion-difficulty AI holding a shield deploys it pre-emptively 400–1200 ms later.</li>
+                    <li><strong>Per-tick noise:</strong> outputs are jittered by ±noise% (Rookie ±20%, Racer ±10%, Champion ±3%) to model human imperfection.</li>
+                    <li><strong>Rubber banding:</strong> throttle is multiplied by a difficulty-dependent factor that grows when the AI is behind the player and shrinks slightly when it's far ahead. Strength is set by the chosen difficulty.</li>
+                    <li><strong>Stuck against wall, auto reverse:</strong> if the AI tries to throttle forward but barely moves for 0.7 s, the controller overrides the fuzzy outputs with a 700 ms burst of full brake (which the car physics interprets as reverse acceleration at low speed) with inverted steering at 60 % magnitude. After the burst the fuzzy controller resumes normally.</li>
+                    <li><strong>Champion only, predict player powerup:</strong> when the player picks up a powerup, a Champion difficulty AI holding a shield deploys it pre-emptively 400–1200 ms later.</li>
                 </ul>
                 <p>The player has the same brake-becomes-reverse behaviour: hold <code>▼</code> while moving forward to brake, keep holding once stopped to reverse out (capped at 40 % of top speed).</p>
             </section>
