@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : race.js
  *  DESCRIPTION : Race manager. Owns the canvas, the world, the cars,
@@ -165,7 +165,7 @@ const Race = {
         this.canvas.style.width = w + 'px';
         this.canvas.style.height = h + 'px';
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        // 3D world canvas — Three.js manages its own DPR/size
+        // 3D world canvas: Three.js manages its own DPR/size
         if (typeof World3D !== 'undefined' && World3D.handleResize) World3D.handleResize();
     },
 
@@ -175,7 +175,7 @@ const Race = {
         this.inspectorVisible = false;
         this._insp = null;   // skeleton + refs, built lazily on first toggle
         // F-key toggle is wired in _setupInput.
-        // Refresh at ~120ms (≈8fps) when visible — smooth enough for the
+        // Refresh at ~120ms (≈8fps) when visible: smooth enough for the
         // live needles/curves, cheap enough not to dent the race loop.
         setInterval(() => {
             if (this.inspectorVisible) this._refreshInspector();
@@ -196,7 +196,7 @@ const Race = {
      * Build the inspector DOM once and cache element refs + a dedicated
      * "visualisation" FuzzyEngine. We run this throwaway engine on the live
      * inputs each refresh so the whole panel (fuzzification → rules →
-     * defuzzification) is a single consistent snapshot — without disturbing
+     * defuzzification) is a single consistent snapshot without disturbing
      * the real AI engine's state or stats.
      */
     _buildInspectorSkeleton() {
@@ -305,7 +305,7 @@ const Race = {
             let domSet = '', domDeg = 0;
             for (const s in mem) if (mem[s] > domDeg) { domDeg = mem[s]; domSet = s; }
             c.valEl.innerHTML =
-                `${this._fiFmt(val)}<span class="fi-chart-set">${domDeg > 0.01 ? domSet : '—'}</span>`;
+                `${this._fiFmt(val)}<span class="fi-chart-set">${domDeg > 0.01 ? domSet : ': '}</span>`;
             this._drawInputChart(c.canvas, insp.viz._inputs[v], c.setNames, c.range, val, mem);
             c.legEl.innerHTML = c.setNames.map((s, i) => {
                 const d = mem[s] || 0;
@@ -353,7 +353,7 @@ const Race = {
 
     /** Compact value formatter for chart headers (sign-aware integers). */
     _fiFmt(v) {
-        if (v == null || isNaN(v)) return '—';
+        if (v == null || isNaN(v)) return ': ';
         return (Math.round(v * 10) / 10).toString();
     },
 
@@ -686,7 +686,7 @@ const Race = {
             if (c.exploded && !c._explosionTriggered) {
                 c._explosionTriggered = true;
                 this._spawnExplosion(c);
-                // Winner is locked on the first explosion only — if both
+                // Winner is locked on the first explosion only if both
                 // cars die in the same frame, whoever exploded first still
                 // hands the win to the other.
                 if (!this._explosionWinner) {
@@ -704,7 +704,7 @@ const Race = {
         // A lap only counts when the car has physically driven through the
         // MIDDLE of the track (lapProgress in [0.35, 0.65]) and then wraps
         // from >0.8 back to <0.2. The narrow mid-window is impossible to be
-        // in at spawn — grid slots sit just behind waypoint 0, which puts
+        // in at spawn: grid slots sit just behind waypoint 0, which puts
         // the initial `lapProgress` at either ~0 or ~1 (Euclidean closest
         // is sometimes the last waypoint). Requiring a true mid-track
         // visit rules out the spurious "0.10s first lap" race-start wrap.
@@ -745,7 +745,7 @@ const Race = {
         // Lots of sparks
         Particles.spawnSparks(ps, car.x, car.y, 30, '#ffd400');
         Particles.spawnSparks(ps, car.x, car.y, 20, '#ff3355');
-        // Persistent smoke plume — keep spawning for ~2s so the wreck smokes.
+        // Persistent smoke plume: keep spawning for ~2s so the wreck smokes.
         const start = performance.now();
         const interval = setInterval(() => {
             if (performance.now() - start > 2200) { clearInterval(interval); return; }
@@ -923,7 +923,7 @@ const Race = {
         ctx.beginPath();
         ctx.arc(0, 0, r, startA, endA + Math.PI * 2);
         ctx.stroke();
-        // Fill arc — color shifts from cyan to red as speed nears max
+        // Fill arc: color shifts from cyan to red as speed nears max
         const color = pct < 0.6 ? '#00eaff' : pct < 0.85 ? '#ffd400' : '#ff3355';
         ctx.strokeStyle = color;
         ctx.shadowColor = color;

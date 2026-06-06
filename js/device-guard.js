@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : device-guard.js
  *  DESCRIPTION : Blocks play on mobile / touch-only devices, because the game
@@ -7,7 +7,7 @@
  *                Shows a full-screen themed "Desktop Only" overlay.
  *
  *                Detection targets devices with NO fine pointer (phones,
- *                tablets) — touchscreen laptops with a trackpad/mouse are
+ *                tablets): touchscreen laptops with a trackpad/mouse are
  *                allowed. A subtle "continue anyway" escape hatch covers the
  *                rare false positive (e.g. a tablet with a Bluetooth keyboard);
  *                the choice is remembered for the browser session.
@@ -25,7 +25,7 @@
     try { if (sessionStorage.getItem(SKIP_KEY) === '1') return; } catch (e) {}
 
     // ------------------------------------------------------------------------
-    // Detection — treat as "mobile / keyboardless" when the device has a
+    // Detection: treat as "mobile / keyboardless" when the device has a
     // coarse pointer (touch) and NO fine pointer (mouse/trackpad), or matches
     // a mobile user-agent, or is an iPad reporting as desktop Safari.
     // ------------------------------------------------------------------------
@@ -115,7 +115,7 @@
           +   '<p class="dg-text">This game is driven with the <b>arrow keys</b>, so it needs a '
           +     'physical keyboard. Please open it on a laptop or desktop computer.</p>'
           +   '<p class="dg-hint">Mobile and tablet controls aren\'t supported yet.</p>'
-          +   '<button class="dg-continue" type="button">I have a keyboard — continue anyway</button>'
+          +   '<button class="dg-continue" type="button">I have a keyboard: continue anyway</button>'
           + '</div>';
         document.body.appendChild(guard);
 

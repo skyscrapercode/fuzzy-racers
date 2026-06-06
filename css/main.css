@@ -96,7 +96,7 @@ nav a {
 
 .menu-top-spacer {
     width: 100%;
-    /* Reserved space — title is painted on the background canvas. */
+    /* Reserved space: title is painted on the background canvas. */
 }
 
 .menu-center {
@@ -226,7 +226,7 @@ nav a {
 }
 
 /* While a modal is open, suppress the animated multi-color gradient
- * borders on background panels — without this, those bright lines bleed
+ * borders on background panels: without this, those bright lines bleed
  * through the modal backdrop as horizontal "rainbow streaks" that look
  * like rule bars overflowing past their container. */
 body:has(.modal.open) .fuzzy-summary::before,
@@ -246,14 +246,14 @@ body:has(.modal.open) .btn::after {
 .modal-panel {
     position: relative;
     /* Opaque (not the translucent --panel) so bright elements on the page
-     * behind the modal — gradient borders, the menu canvas — don't bleed
+     * behind the modal: gradient borders, the menu canvas: don't bleed
      * through the panel and look like overflowing content. */
     background: #0c0e1a;
     border: 1px solid var(--panel-border);
     border-radius: var(--radius);
     width: min(720px, 100%);
     max-height: 86vh;
-    /* Panel itself does NOT scroll — overflow lives on .modal-body. This
+    /* Panel itself does NOT scroll overflow lives on .modal-body. This
      * keeps the animated ::before gradient border outside the scroll
      * container, which prevents WebKit/Chrome from rendering the gradient
      * as a horizontal line cutting through scrolled content. */
@@ -277,7 +277,7 @@ body:has(.modal.open) .btn::after {
 }
 
 /* Back-compat for modals that don't (yet) wrap their content in a
- * .modal-body — apply the same padding/overflow to direct children. */
+ * .modal-body: apply the same padding/overflow to direct children. */
 .modal-panel:not(:has(.modal-body)) {
     overflow-y: auto;
     padding: 2rem 2.25rem;

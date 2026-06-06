@@ -50,7 +50,7 @@
                 <h3>Controls</h3>
                 <ul>
                     <li><span class="key">▲</span> Accelerate forward</li>
-                    <li><span class="key">▼</span> Brake while moving forward — keep holding once stopped to <strong>reverse</strong> out of walls (capped at ~40% of top speed)</li>
+                    <li><span class="key">▼</span> Brake while moving forward: keep holding once stopped to <strong>reverse</strong> out of walls (capped at ~40% of top speed)</li>
                     <li><span class="key">◀</span> <span class="key">▶</span> Steer left / right (works in reverse too)</li>
                     <li><span class="key">Space</span> Use held powerup</li>
                     <li><span class="key">P</span> / <span class="key">Esc</span> Open the pause menu (Resume or Restart)</li>
@@ -62,14 +62,14 @@
             <section class="modal-section">
                 <h3>Powerups</h3>
                 <ul>
-                    <li><strong>🔴 Speed Boost</strong> — +50% speed for 5s. Best used on straightaways.</li>
-                    <li><strong>🛡️ Shield</strong> — Immune to all damage for 6s; blocks missiles, oil, and rams.</li>
-                    <li><strong>🎯 Missile</strong> — Homing rocket at the car ahead. 15 HP damage per hit.</li>
-                    <li><strong>🌊 Oil Slick</strong> — Drips behind you; cars that hit it spin out.</li>
-                    <li><strong>⚡ EMP Blast</strong> — Stuns nearby cars for 2s.</li>
-                    <li><strong>🔧 Repair Kit</strong> — Instantly restores 40 HP.</li>
-                    <li><strong>🌀 Tornado</strong> — Spins out the car ahead.</li>
-                    <li><strong>💨 Nitro Surge</strong> — Massive 2s burst. Requires the Nitro Engine.</li>
+                    <li><strong>🔴 Speed Boost</strong> +50% speed for 5s. Best used on straightaways.</li>
+                    <li><strong>🛡️ Shield</strong> Immune to all damage for 6s; blocks missiles, oil, and rams.</li>
+                    <li><strong>🎯 Missile</strong> Homing rocket at the car ahead. 15 HP damage per hit.</li>
+                    <li><strong>🌊 Oil Slick</strong> Drips behind you; cars that hit it spin out.</li>
+                    <li><strong>⚡ EMP Blast</strong> Stuns nearby cars for 2s.</li>
+                    <li><strong>🔧 Repair Kit</strong> Instantly restores 40 HP.</li>
+                    <li><strong>🌀 Tornado</strong> Spins out the car ahead.</li>
+                    <li><strong>💨 Nitro Surge</strong> Massive 2s burst. Requires the Nitro Engine.</li>
                 </ul>
             </section>
 
@@ -77,15 +77,15 @@
                 <h3>Fuzzy AI Difficulty</h3>
                 <p>Opponents use a fuzzy logic controller that weighs distance to the player, gap, corner sharpness, health, and powerup readiness. Difficulty tunes how often the engine re-ticks, how much input noise it adds, and how strongly it rubber-bands.</p>
                 <ul>
-                    <li><strong>🟢 Rookie</strong> — Slow 1.5s reactions, ±20% input noise, rarely uses powerups, mild catch-up. Prone to mistakes.</li>
-                    <li><strong>🟡 Racer</strong> — Moderate 0.8s reactions, ±10% noise, strategic powerup use, moderate rubber-banding.</li>
-                    <li><strong>🔴 Champion</strong> — Fast 0.3s reactions, ±3% noise, aggressive optimal powerups, strong rubber-banding, and ★ predicts your powerups.</li>
+                    <li><strong>🟢 Rookie</strong> Slow 1.5s reactions, ±20% input noise, rarely uses powerups, mild catch-up. Prone to mistakes.</li>
+                    <li><strong>🟡 Racer</strong> Moderate 0.8s reactions, ±10% noise, strategic powerup use, moderate rubber-banding.</li>
+                    <li><strong>🔴 Champion</strong> Fast 0.3s reactions, ±3% noise, aggressive optimal powerups, strong rubber-banding, and ★ predicts your powerups.</li>
                 </ul>
             </section>
 
             <section class="modal-section">
                 <h3>Garage & Customization</h3>
-                <p>Pick a chassis in the Garage, then tune <strong>top speed</strong>, <strong>acceleration</strong>, <strong>handling</strong>, and <strong>armor</strong>. Stats are budgeted — bumping one trims another. Paint colors are pure flex.</p>
+                <p>Pick a chassis in the Garage, then tune <strong>top speed</strong>, <strong>acceleration</strong>, <strong>handling</strong>, and <strong>armor</strong>. Stats are budgeted: bumping one trims another. Paint colors are pure flex.</p>
             </section>
             </div>
         </div>
@@ -123,7 +123,7 @@
     </div>
 
     <!-- The "How Fuzzy Logic Works" content is now delivered by the Fuzzy
-         Logic Assistant (bottom-right 🧠 launcher). See js/chatbot.js — it
+         Logic Assistant (bottom-right 🧠 launcher). See js/chatbot.js: it
          answers the four predefined questions from built-in content
          (buttons-only input, deterministic, no network). -->
 
@@ -382,7 +382,7 @@
             ctx.fillStyle = '#0b1320';
             ctx.fillText('FUZZY RACERS', cx + 2, cy);
 
-            // Main fill — bright cyan stroke + white core
+            // Main fill: bright cyan stroke + white core
             ctx.shadowBlur = 0;
             ctx.lineWidth = 3;
             ctx.strokeStyle = '#00eaff';

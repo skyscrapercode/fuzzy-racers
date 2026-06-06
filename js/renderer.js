@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : renderer.js
  *  DESCRIPTION : Track geometry generator + all canvas drawing helpers
@@ -53,19 +53,19 @@ function _sampleClosedCatmullRom(controlPoints, samplesPerSegment) {
 // ============================================================
 
 const TrackControlPoints = {
-    // City Circuit — rounded rectangle with a chicane bite on the right
+    // City Circuit: rounded rectangle with a chicane bite on the right
     // matching the garage minimap. Collinear intermediate points keep the
     // long straights from bowing under Catmull-Rom smoothing. The chicane
     // arms are placed 320 px apart (vs 156 px road width) so the road has
-    // ~80 px of clearance on each side of the bite — comfortable to drive.
+    // ~80 px of clearance on each side of the bite comfortable to drive.
     city: [
         { x: 300,  y: 280  },
         { x: 700,  y: 280  },   // top straight (collinear keeps the spline flat)
         { x: 1100, y: 280  },
         { x: 1500, y: 280  },
         { x: 1700, y: 470  },   // top-right corner
-        { x: 1380, y: 530  },   // chicane bite — upper inward turn
-        { x: 1380, y: 850  },   // chicane bite — lower inward turn (320 px apart)
+        { x: 1380, y: 530  },   // chicane bite: upper inward turn
+        { x: 1380, y: 850  },   // chicane bite: lower inward turn (320 px apart)
         { x: 1700, y: 910  },   // back to right after the bite
         { x: 1500, y: 1050 },   // bottom-right corner
         { x: 1100, y: 1050 },   // bottom straight
@@ -75,7 +75,7 @@ const TrackControlPoints = {
         { x: 100,  y: 470  }    // left straight
     ],
 
-    // Desert Highway — long stretched oval, mild kinks
+    // Desert Highway: long stretched oval, mild kinks
     desert: [
         { x: 300,  y: 600 },
         { x: 600,  y: 250 },
@@ -85,7 +85,7 @@ const TrackControlPoints = {
         { x: 700,  y: 970 }
     ],
 
-    // Mountain Pass — twisty winding closed loop
+    // Mountain Pass: twisty winding closed loop
     mountain: [
         { x: 300,  y: 800  },
         { x: 350,  y: 500  },
@@ -249,7 +249,7 @@ const Renderer = {
         if (!geom) return;
         const { outer, inner, waypoints, style, start } = geom;
 
-        // 1. Off-track fill (grass / sand) — generously larger than the track
+        // 1. Off-track fill (grass / sand): generously larger than the track
         //    bounds so the floor always extends past the screen edges in
         //    every direction. At any viewport size + camera rotation the
         //    visible world rectangle is at most ~2200 px diagonal from the
@@ -436,7 +436,7 @@ const Renderer = {
                 }
             } else if (trackId === 'mountain') {
                 if (roll < 0.55) {
-                    // Drawn pine — stacked-triangle classic
+                    // Drawn pine: stacked-triangle classic
                     props.push({
                         type: 'pine', x, y,
                         h: 36 + rand() * 32,
@@ -473,7 +473,7 @@ const Renderer = {
         ctx.lineWidth = 1;
         ctx.strokeRect(-w/2 + 0.5, -h + 0.5, w - 1, h - 1);
 
-        // Lit windows — deterministic pattern from the prop's winSeed
+        // Lit windows: deterministic pattern from the prop's winSeed
         let s = p.winSeed | 0;
         const next = () => { s = (s * 9301 + 49297) | 0; return ((s % 100) + 100) % 100; };
         const cols = Math.floor((w - 6) / 6);
@@ -490,7 +490,7 @@ const Renderer = {
         ctx.shadowBlur = 0;
     },
 
-    /** Jagged rock pile — irregular polygon with a soft highlight. */
+    /** Jagged rock pile: irregular polygon with a soft highlight. */
     _drawRockProp(ctx, p) {
         const r = p.r;
         let s = p.shapeSeed | 0;
@@ -685,7 +685,7 @@ const Renderer = {
             ctx.shadowBlur = 0;
         }
 
-        // Nitro exhaust (blue) — distinct from boost
+        // Nitro exhaust (blue): distinct from boost
         if (car.isNitro && car.isNitro()) {
             ctx.fillStyle = '#00eaff';
             ctx.shadowColor = '#00eaff';
@@ -700,7 +700,7 @@ const Renderer = {
             ctx.shadowBlur = 0;
         }
 
-        // Stunned (EMP) — electric pulses
+        // Stunned (EMP): electric pulses
         if (car.isStunned && car.isStunned()) {
             ctx.strokeStyle = '#a479ff';
             ctx.lineWidth = 2;
@@ -812,10 +812,10 @@ const Renderer = {
      *   { x, y, vx, vy, life, maxLife, color, size, type }
      *
      * Types supported:
-     *   'smoke'   — soft grey circle that fades
-     *   'spark'   — small glowing point with a short trail
-     *   'flame'   — bright orange-yellow circle
-     *   'explosion' — expanding ring
+     *   'smoke': soft grey circle that fades
+     *   'spark': small glowing point with a short trail
+     *   'flame': bright orange-yellow circle
+     *   'explosion': expanding ring
      */
     drawParticles(ctx, particles) {
         if (!particles || !particles.length) return;
@@ -915,7 +915,7 @@ const Particles = {
 
 // ============================================================
 // SECTION: Decorative Track Minimap (garage track-selection cards)
-// — distinct from Renderer.drawMinimap which uses live race geometry.
+//: distinct from Renderer.drawMinimap which uses live race geometry.
 // ============================================================
 
 function drawTrackMinimap(ctx, w, h, trackId, accent) {

@@ -1,6 +1,6 @@
 /* Race page: two stacked full-screen canvases.
- *   #worldCanvas3D — Three.js renders the 3D world (track, cars, props, FX).
- *   #hudCanvas     — Canvas 2D paints the HUD + phase overlays on top.
+ *   #worldCanvas3D: Three.js renders the 3D world (track, cars, props, FX).
+ *   #hudCanvas: Canvas 2D paints the HUD + phase overlays on top.
  * The HUD canvas is transparent with pointer-events:none so input still
  * reaches the page. */
 

@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Fuzzy Logic Assistant — chatbot launcher + panel
+ *  Fuzzy Logic Assistant: chatbot launcher + panel
  *  Themed to match the neon menu buttons (.btn) it replaces: dark surface,
  *  cyan neon glow, uppercase label. Uses the shared theme variables from
  *  main.css.
@@ -51,7 +51,7 @@
     50%      { filter: drop-shadow(0 0 10px rgba(0, 234, 255, 0.95)); }
 }
 
-/* Hide the long label on narrow screens — icon-only launcher. */
+/* Hide the long label on narrow screens icon-only launcher. */
 @media (max-width: 560px) {
     .fla-fab-label { display: none; }
     .fla-fab { padding: 0.85rem; }

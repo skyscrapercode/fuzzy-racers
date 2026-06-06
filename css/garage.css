@@ -402,7 +402,7 @@
 
 .opt-grid {
     display: grid;
-    /* minmax(0, 1fr) — NOT bare 1fr. A bare 1fr is minmax(auto, 1fr), whose
+    /* minmax(0, 1fr): NOT bare 1fr. A bare 1fr is minmax(auto, 1fr), whose
        min track size is the column's min-content. The option-icon <canvas>
        contributes its (large) backing-store width as min-content, which would
        balloon the column and feed an ever-larger size back into fitCanvas
@@ -658,7 +658,7 @@
 
 @media (max-width: 1280px) {
     .opt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    /* minmax(0, 1fr), not bare 1fr — the single column holds the option-icon
+    /* minmax(0, 1fr), not bare 1fr: the single column holds the option-icon
        canvases, whose backing-store width would otherwise become the column's
        min-content and balloon the whole customize panel (then feed back into
        fitCanvas). minmax(0, …) lets the column track shrink to the viewport. */
@@ -1072,7 +1072,7 @@
     display: block;
 }
 
-/* Quick-reference table for input/output variables — paired with the
+/* Quick-reference table for input/output variables paired with the
    membership-function charts so the chart units are unambiguous. */
 .docs-var-table {
     width: 100%;

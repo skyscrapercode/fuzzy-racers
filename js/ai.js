@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : ai.js
  *  DESCRIPTION : Per-opponent AI controller. Owns a FuzzyEngine
@@ -13,7 +13,7 @@
  *      look-ahead waypoint
  *    - Magnitude is the larger of the geometric need and the fuzzy
  *      engine's `steering` magnitude (the fuzzy hint reinforces
- *      "this is a corner — turn hard")
+ *      "this is a corner: turn hard")
  *
  *  Throttle/brake/use_powerup come directly from the fuzzy engine.
  *
@@ -294,7 +294,7 @@ class AIController {
 }
 
 // ============================================================
-// SECTION: Public entry point — updateAI()
+// SECTION: Public entry point: updateAI()
 // ============================================================
 
 /**

@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game (3D conversion)
+ *  PROJECT     : Fuzzy Racers: AI Racing Game (3D conversion)
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : world3d.js
  *  DESCRIPTION : Three.js-based 3D world renderer. Replaces the old top-down
@@ -31,7 +31,7 @@
  *          looks at a point slightly in front of the player
  *        - WebGL renders the scene
  *
- *  Cars stay logically 2D — physics, AI, lap accounting are all unchanged.
+ *  Cars stay logically 2D: physics, AI, lap accounting are all unchanged.
  *  Only rendering changes.
  * ============================================================================ */
 
@@ -54,7 +54,7 @@ const World3D = {
     oilSlickMeshes: null,        // Map<OilSlick, THREE.Mesh>
     visualEffectMeshes: null,    // Map<effect, THREE.Mesh|Group>
 
-    // Particle pool — grows as needed
+    // Particle pool: grows as needed
     particlePool: null,
     _dotTexture: null,
 
@@ -309,7 +309,7 @@ const World3D = {
             'sedan';
         const base = this._shapeDims[shape] || this._shapeDims.sedan;
         const dims = Object.assign({ shape }, base);
-        // Stealth (low-profile) kit: narrower + lower, sharper nose — same
+        // Stealth (low-profile) kit: narrower + lower, sharper nose: same
         // tweak the 2D renderer applies.
         const kitVisual = (typeof getBodyKit === 'function')
             ? getBodyKit((car.customization || {}).bodyKit).visual
@@ -377,7 +377,7 @@ const World3D = {
         shadow.position.y = 0.18;
         group.add(shadow);
 
-        // Body — extruded chassis silhouette in the paint colour.
+        // Body: extruded chassis silhouette in the paint colour.
         const bodyMat = new THREE.MeshLambertMaterial({
             color: new THREE.Color(paint),
             emissive: new THREE.Color(paint),
@@ -591,7 +591,7 @@ const World3D = {
     },
 
     /** A missile: small body cylinder + nose cone + back flame, no homing
-     *  geometry — position is synced each frame from the Projectile. */
+     *  geometry: position is synced each frame from the Projectile. */
     _buildProjectileMesh(proj) {
         const group = new THREE.Group();
 
@@ -639,7 +639,7 @@ const World3D = {
         return mesh;
     },
 
-    /** A visual effect mesh — currently EMP (expanding ring) or tornado
+    /** A visual effect mesh: currently EMP (expanding ring) or tornado
      *  (rotating funnel around a target car). */
     _buildVisualEffectMesh(effect) {
         if (effect.type === 'emp') {
@@ -666,7 +666,7 @@ const World3D = {
         return null;
     },
 
-    /** Powerup crate — floating octahedron, glow colour matches type. */
+    /** Powerup crate: floating octahedron, glow colour matches type. */
     _buildPowerupMesh(box) {
         const t = getPowerupType(box.type);
         const colorHex = (t && t.color) || '#ffffff';
@@ -851,7 +851,7 @@ const World3D = {
     },
 
     /** Scatter props in the off-track area outside the road. Props use
-     *  per-track types — buildings (city), cacti (desert), pine trees
+     *  per-track types: buildings (city), cacti (desert), pine trees
      *  (mountain). Safe-distance check skips any candidate too close to the
      *  road centerline. */
     _buildTrackProps(geom) {
@@ -907,7 +907,7 @@ const World3D = {
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
         mesh.position.y = h / 2;
 
-        // A few lit windows on one face — random pattern, warm colour.
+        // A few lit windows on one face random pattern, warm colour.
         const group = new THREE.Group();
         group.add(mesh);
         const winRows = Math.floor(h / 16);
@@ -961,7 +961,7 @@ const World3D = {
             );
             const side = rand() > 0.5 ? 1 : -1;
             arm.position.set(side * (r + armR), h * (0.55 + rand() * 0.15), 0);
-            // Bend out then up — represented by 2 rotated segments would be
+            // Bend out then up: represented by 2 rotated segments would be
             // overkill; one rotated arm is fine.
             arm.rotation.z = side * (Math.PI / 5);
             group.add(arm);
@@ -969,7 +969,7 @@ const World3D = {
         return group;
     },
 
-    /** Conifer pine — brown trunk + stacked green cones. */
+    /** Conifer pine: brown trunk + stacked green cones. */
     _buildPineProp(rand) {
         const group = new THREE.Group();
         const trunkH = 10 + rand() * 8;

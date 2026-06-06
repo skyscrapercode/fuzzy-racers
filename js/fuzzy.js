@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : fuzzy.js
  *  DESCRIPTION : Mamdani-style fuzzy inference engine that drives every
@@ -9,7 +9,7 @@
  *  HOW FUZZY LOGIC CONTROLS THE AI
  *  ----------------------------------------------------------------------------
  *  Conventional "if/else" racing AI struggles with continuous, conflicting
- *  signals — being a little behind on a fast car nearing a hairpin while
+ *  signals: being a little behind on a fast car nearing a hairpin while
  *  carrying a powerup is not a single discrete case, it's a smear of
  *  partially-true facts. Fuzzy logic lets each fact have a degree of truth
  *  in [0,1], so the AI can lean on multiple soft rules at once and emit a
@@ -17,19 +17,19 @@
  *
  *  Each AI tick the engine runs three stages:
  *
- *    1. FUZZIFICATION    — Convert crisp race telemetry into degrees of
+ *    1. FUZZIFICATION: Convert crisp race telemetry into degrees of
  *                          membership across the named fuzzy sets of each
  *                          input variable (e.g. "distance=80px" becomes
  *                          very_close=1.0, close=0.0, medium=0.0, …).
  *
- *    2. RULE EVALUATION  — For every rule, compute its firing strength as
+ *    2. RULE EVALUATION: For every rule, compute its firing strength as
  *                          min() of its antecedent membership degrees
  *                          (Zadeh AND). Aggregate output activations
  *                          per output-variable+set via max().
  *
- *    3. DEFUZZIFICATION  — For each output variable, build the Mamdani-
+ *    3. DEFUZZIFICATION: For each output variable, build the Mamdani-
  *                          clipped aggregate membership function over 101
- *                          sample points and compute its centroid —
+ *                          sample points and compute its centroid 
  *                          producing the crisp throttle, brake, steering,
  *                          aggression, and use_powerup commands.
  *
@@ -56,7 +56,7 @@
  *                                  (>70 → controller actually fires)
  *
  *  ----------------------------------------------------------------------------
- *  RULE BASE (33 rules — see _buildRules() for the live source of truth)
+ *  RULE BASE (33 rules: see _buildRules() for the live source of truth)
  *  ----------------------------------------------------------------------------
  *
  *  SPEED CONTROL  (corner-driven throttle and brake)
@@ -114,7 +114,7 @@
  *  DEFENSIVE BEHAVIOR  (low/critical health)
  *    R21  IF health IS critical AND distance IS very_close
  *                                            THEN aggression IS low
- *           One more hit means race over — back off when contact is likely.
+ *           One more hit means race over back off when contact is likely.
  *    R22  IF health IS critical              THEN brake IS medium
  *           Drive more conservatively at critical health.
  *    R23  IF health IS low AND distance IS very_close
@@ -127,10 +127,10 @@
  *           Tail of the player and behind: send the overtake.
  *    R25  IF distance IS close AND player_speed IS slow
  *                                            THEN throttle IS full
- *           Player is slowing — close on full throttle.
+ *           Player is slowing: close on full throttle.
  *    R26  IF distance IS close AND player_speed IS slow
  *                                            THEN aggression IS high
- *           Player is slowing — press the pass.
+ *           Player is slowing: press the pass.
  *    R27  IF distance IS very_close AND player_speed IS very_fast
  *                                            THEN aggression IS high
  *           Glued to a fast player: stay on them.
@@ -205,7 +205,7 @@ class FuzzyEngine {
      *   b < x < c        →   linear ramp down from 1 to 0
      *
      * a, b, c must satisfy a ≤ b ≤ c. Degenerate cases (a == b or b == c)
-     * are handled — they collapse one side of the triangle to a vertical edge.
+     * are handled: they collapse one side of the triangle to a vertical edge.
      */
     static triangle(x, a, b, c) {
         // Peak first so degenerate shoulders (a==b or b==c) report 1 at the
@@ -457,7 +457,7 @@ class FuzzyEngine {
             // ===== DEFENSIVE BEHAVIOR =====
             R([['health', 'critical'], ['distance', 'very_close']],
                                                               ['aggression', 'low'],
-              'One more hit means race over — back off when contact is likely.'),
+              'One more hit means race over back off when contact is likely.'),
             R([['health', 'critical']],                      ['brake', 'medium'],
               'Drive more conservatively at critical health.'),
             R([['health', 'low'], ['distance', 'very_close']],
@@ -470,10 +470,10 @@ class FuzzyEngine {
               'Tail of the player and behind: send the overtake.'),
             R([['distance', 'close'], ['player_speed', 'slow']],
                                                               ['throttle', 'full'],
-              'Player is slowing — close on full throttle.'),
+              'Player is slowing: close on full throttle.'),
             R([['distance', 'close'], ['player_speed', 'slow']],
                                                               ['aggression', 'high'],
-              'Player is slowing — press the pass.'),
+              'Player is slowing: press the pass.'),
             R([['distance', 'very_close'], ['player_speed', 'very_fast']],
                                                               ['aggression', 'high'],
               'Glued to a fast player: stay on them.'),

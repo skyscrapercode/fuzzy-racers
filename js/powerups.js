@@ -1,8 +1,8 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : powerups.js
- *  DESCRIPTION : Powerup system — registry, collectible boxes, homing
+ *  DESCRIPTION : Powerup system: registry, collectible boxes, homing
  *                missiles, oil slicks, EMP rings, tornado effects,
  *                manager, and the fuzzy-driven "should AI use powerup
  *                now?" decision helper consumed by ai.js.
@@ -12,7 +12,7 @@
  *  - PowerupManager: owns all boxes/projectiles/slicks/effects,
  *                    handles activation, AI use decisions, drawing.
  *
- *  All drawing is in WORLD coordinates — the race manager translates
+ *  All drawing is in WORLD coordinates the race manager translates
  *  the ctx to camera space before calling PowerupManager.draw().
  * ============================================================ */
 
@@ -46,7 +46,7 @@ const PowerupTypes = [
         color: '#ffd400',
         category: 'aggressive',
         damage: 15,
-        desc: 'Homing rocket — 15 HP damage'
+        desc: 'Homing rocket: 15 HP damage'
     },
     {
         id: 'oil',
@@ -174,7 +174,7 @@ class PowerupBox {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Inner icon (drawn upright — counter-rotate)
+        // Inner icon (drawn upright: counter-rotate)
         ctx.rotate(-this.rotation);
         _drawPowerupIcon(ctx, this.type, color);
         ctx.restore();

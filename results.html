@@ -13,7 +13,7 @@
     <main id="results">
         <header class="results-header">
             <h1 id="resultsTitle">RACE RESULTS</h1>
-            <div class="results-subtitle" id="resultsSubtitle">—</div>
+            <div class="results-subtitle" id="resultsSubtitle"> </div>
         </header>
 
         <section class="results-grid">
@@ -40,7 +40,7 @@
         <section class="fuzzy-summary">
             <div class="fuzzy-left">
                 <h2>AI Fuzzy Brain</h2>
-                <p class="fuzzy-intro" id="fuzzyIntro">—</p>
+                <p class="fuzzy-intro" id="fuzzyIntro"> </p>
                 <div class="fuzzy-counts" id="fuzzyCounts"></div>
                 <h3 class="fuzzy-sub">Top Fired Rules</h3>
                 <div class="rule-list" id="topRules"></div>
@@ -100,7 +100,7 @@
 
             <section class="modal-section">
                 <h3>Why use it for racing AI?</h3>
-                <p>Race telemetry is continuous and messy — distance, speed, cornering, health, gap. A traditional if/else AI either explodes with edge cases or jerks between behaviors at hard thresholds. A fuzzy controller weighs every signal at once and produces a <strong>smooth, defensible action</strong> — exactly what you want from a believable opponent.</p>
+                <p>Race telemetry is continuous and messy, distance, speed, cornering, health, gap. A traditional if/else AI either explodes with edge cases or jerks between behaviors at hard thresholds. A fuzzy controller weighs every signal at once and produces a <strong>smooth, defensible action</strong> exactly what you want from a believable opponent.</p>
             </section>
 
             <section class="modal-section">
@@ -129,10 +129,10 @@
             <section class="modal-section">
                 <h3>What in this game is fuzzy?</h3>
                 <ul class="fz-bullets">
-                    <li><strong>Speed control</strong> — throttle and brake are chosen by corner sharpness and distance to the player, not hard thresholds.</li>
-                    <li><strong>Powerup timing</strong> — when to fire a held powerup is computed from gap, health, and "powerup ready" simultaneously.</li>
-                    <li><strong>Aggression</strong> — the AI's overall posture (defensive vs. attacking) is a fuzzy blend of gap, health and proximity.</li>
-                    <li><strong>Braking under risk</strong> — at critical health the AI brakes earlier and softens aggression even on straight track.</li>
+                    <li><strong>Speed control:</strong> throttle and brake are chosen by corner sharpness and distance to the player, not hard thresholds.</li>
+                    <li><strong>Powerup timing:</strong> when to fire a held powerup is computed from gap, health, and "powerup ready" simultaneously.</li>
+                    <li><strong>Aggression:</strong> the AI's overall posture (defensive vs. attacking) is a fuzzy blend of gap, health and proximity.</li>
+                    <li><strong>Braking under risk:</strong> at critical health the AI brakes earlier and softens aggression even on straight track.</li>
                 </ul>
                 <p style="margin-top: 0.6rem;">Press <span class="key">F</span> during a race to open the in-race fuzzy inspector and watch the engine think live.</p>
             </section>
@@ -193,8 +193,8 @@
             const faster = (p != null && a != null) ? (p < a ? 'p' : (p > a ? 'a' : null)) : null;
             lapHTML += `<div class="lap-row">
                 <span>${i + 1}</span>
-                <span class="mono ${faster==='p'?'win':''}">${p != null ? p.toFixed(2) + 's' : '—'}</span>
-                <span class="mono ${faster==='a'?'loss':''}">${a != null ? a.toFixed(2) + 's' : '—'}</span>
+                <span class="mono ${faster==='p'?'win':''}">${p!= null? p.toFixed(2) + 's': ': '}</span>
+                <span class="mono ${faster==='a'?'loss':''}">${a!= null? a.toFixed(2) + 's': ': '}</span>
             </div>`;
         }
         lapTable.innerHTML = lapHTML;
@@ -203,8 +203,8 @@
         const combatRows = document.getElementById('combatRows');
         const ppu = result.cars.player.powerupsUsed || { count: 0, types: {} };
         const apu = result.cars.ai.powerupsUsed     || { count: 0, types: {} };
-        const ptypes = Object.keys(ppu.types).join(', ') || '—';
-        const atypes = Object.keys(apu.types).join(', ') || '—';
+        const ptypes = Object.keys(ppu.types).join(', ') || ': ';
+        const atypes = Object.keys(apu.types).join(', ') || ': ';
         combatRows.innerHTML = `
             <div class="stat-row"><span>Top speed (you)</span><span class="stat-v mono">${result.cars.player.topSpeed} px/s</span></div>
             <div class="stat-row"><span>Top speed (AI)</span><span class="stat-v mono">${result.cars.ai.topSpeed} px/s</span></div>
@@ -222,7 +222,7 @@
 
         if (fuzzy) {
             fuzzyIntro.textContent =
-                'The opponent\'s controller used a Mamdani fuzzy inference engine — fuzzified race telemetry, ' +
+                'The opponent\'s controller used a Mamdani fuzzy inference engine fuzzified race telemetry, ' +
                 'evaluated rule activations, and defuzzified by centroid into throttle/brake/steering commands. ' +
                 'On ' + diffName + ' difficulty the engine re-ticked roughly every ' +
                 ({rookie:'1.5s', racer:'0.8s', champion:'0.3s'})[result.difficulty || 'racer'] + '.';

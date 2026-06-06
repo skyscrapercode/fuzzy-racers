@@ -1,5 +1,5 @@
 /* ============================================================================
- *  PROJECT     : Fuzzy Racers — AI Racing Game
+ *  PROJECT     : Fuzzy Racers: AI Racing Game
  *  SUBJECT     : ISP568 Fuzzy Logic Systems
  *  FILE        : car.js
  *  DESCRIPTION : Car registry, customization data (engines/tires/body kits/
@@ -189,7 +189,7 @@ function getTires(id)    { return Tires.find(t => t.id === id) || Tires[0]; }
 function getBodyKit(id)  { return BodyKits.find(b => b.id === id) || BodyKits[0]; }
 
 /* Compute combined final stats. base + engine + tires + bodyKit.
- * Returns { speed, handling, accel, armor }. Stats can exceed 10 — caller
+ * Returns { speed, handling, accel, armor }. Stats can exceed 10: caller
  * decides bar scaling. */
 function computeFinalStats(baseStats, customization) {
     const out = Object.assign({}, baseStats);
@@ -445,7 +445,7 @@ function drawEngineIcon(ctx, w, h, engineId) {
     roundedRect(ctx, -28, -18, 56, 36, 4);
     ctx.fill(); ctx.stroke();
 
-    // Cylinders/spark plugs on top — count varies by engine
+    // Cylinders/spark plugs on top: count varies by engine
     const cylCount = { stock: 4, sport: 4, turbo: 6, nitro: 6 }[engineId] || 4;
     const spacing = 48 / cylCount;
     ctx.fillStyle = '#5a6088';
@@ -573,7 +573,7 @@ function drawTireIcon(ctx, w, h, tireId) {
             ctx.fill();
         }
     } else if (tireId === 'slick') {
-        // Smooth — almost no tread
+        // Smooth: almost no tread
         ctx.strokeStyle = 'rgba(255, 51, 85, 0.7)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -629,7 +629,7 @@ function drawBodyKitIcon(ctx, w, h, kitId) {
 }
 
 // ============================================================
-// SECTION: Car class — runtime physics + collisions
+// SECTION: Car class: runtime physics + collisions
 // ============================================================
 
 /* ============================================================
@@ -657,7 +657,7 @@ class Car {
     /**
      * @param {object} config
      *   - id         : string identifier (e.g. 'street_rocket')
-     *   - baseStats  : { speed, handling, accel, armor } — base car stats
+     *   - baseStats  : { speed, handling, accel, armor }: base car stats
      *   - customization: same shape as State.get('customization'), used for paint/bodyKit and stat modifiers
      *   - isPlayer   : boolean
      *   - x, y, angle: starting pose
@@ -683,7 +683,7 @@ class Car {
         this.acceleration = 100 + final.accel    * 20;   // px/s²
         this.brakingPower = 220 + final.accel    * 14;   // px/s² when braking
         this.turnRate     = 1.0 + final.handling * 0.25; // rad/s at full grip
-        // Armor * 15 so that a full 3-lap race has comfortable HP headroom —
+        // Armor * 15 so that a full 3-lap race has comfortable HP headroom 
         // explosion is reserved for missile hits and repeated heavy
         // collisions, not normal scraping.
         this.maxHealth    = Math.max(30, final.armor * 15);
@@ -715,7 +715,7 @@ class Car {
         this.oilDropTimer  = 0;  // accumulator for spacing oil patches
 
         // Explosion / wreck state. When health hits 0 the car explodes and
-        // becomes a non-driveable wreck — race.js reads `exploded` to end the
+        // becomes a non-driveable wreck: race.js reads `exploded` to end the
         // race and award the win to the other car.
         this.exploded = false;
         this.explodedAt = 0;
@@ -875,7 +875,7 @@ class Car {
 
         // ----- Drag (so cars coast to a stop) -----
         const drag = Math.pow(0.5, dt); // ~50% velocity decay per second when coasting
-        // Only apply gentle drag (not full 0.5 — that'd kill the feel)
+        // Only apply gentle drag (not full 0.5: that'd kill the feel)
         const dragK = 1 - (1 - drag) * 0.2; // ≈ 0.9 over 1s
         this.vx *= dragK;
         this.vy *= dragK;
@@ -935,7 +935,7 @@ class Car {
         }
 
         // Per-frame inputs are persistent until overwritten by the controller.
-        // (We do NOT clear them here — race.js / ai.js sets them each tick.)
+        // (We do NOT clear them here race.js / ai.js sets them each tick.)
     }
 
     // ------------ Collisions ------------
@@ -1030,7 +1030,7 @@ class Car {
         other.vy -= dv * ny * restitution;
 
         // Damage proportional to closing speed. Light bumps (<80 px/s
-        // closing) deal nothing — only meaningful side-swipes draw blood.
+        // closing) deal nothing: only meaningful side-swipes draw blood.
         const closing = Math.abs(dv);
         if (closing > 80) {
             const dmg = (closing - 80) * 0.04;

@@ -30,7 +30,7 @@
                 <aside class="preview-panel">
                     <div class="preview-heading">
                         <h2>Selected</h2>
-                        <span class="preview-name" id="previewName">—</span>
+                        <span class="preview-name" id="previewName"> </span>
                     </div>
                     <canvas id="carPreview"></canvas>
                     <div class="preview-stats" id="previewStats"></div>
@@ -85,7 +85,7 @@
                     <div class="preview-panel" style="flex: 1;">
                         <div class="preview-heading">
                             <h2>Live Preview</h2>
-                            <span class="preview-name" id="customPreviewName">—</span>
+                            <span class="preview-name" id="customPreviewName"> </span>
                         </div>
                         <canvas id="customPreview"></canvas>
                     </div>
@@ -108,7 +108,7 @@
                 <div class="section-block">
                     <div class="section-title">
                         <h2>Choose Your Opponent</h2>
-                        <span class="section-hint">Same roster — pick anyone except your own car</span>
+                        <span class="section-hint">Same roster: pick anyone except your own car</span>
                     </div>
                     <div class="opponent-grid" id="opponentGrid"></div>
                 </div>
@@ -202,16 +202,16 @@
             </section>
 
             <section class="docs-section">
-                <h2>Defuzzification — Centroid Method</h2>
-                <p>For each output variable, the engine samples the universe at 101 evenly-spaced points. At each sample point, the aggregated output membership is the <code>max()</code> across all activated sets — each clipped at its firing strength (Mamdani inference).</p>
+                <h2>Defuzzification: Centroid Method</h2>
+                <p>For each output variable, the engine samples the universe at 101 evenly-spaced points. At each sample point, the aggregated output membership is the <code>max()</code> across all activated sets: each clipped at its firing strength (Mamdani inference).</p>
                 <p>The crisp output is then the centroid (center of gravity) of that aggregated curve:</p>
                 <p style="text-align:center; font-family:'Consolas','Monaco',monospace; color: var(--neon-cyan); font-size: 1.1rem;">crisp = Σ(x · μ(x)) / Σ(μ(x))</p>
                 <p>This is what becomes the AI's <code>throttle</code> (0–100), <code>brake</code> (0–100), <code>steering</code> (−100…+100), <code>aggression</code> (0–100), and <code>use_powerup</code> (0–100).</p>
-                <p>For the <code>use_powerup</code> output the crisp number is <em>not</em> compared against a single global threshold — the firing decision is made per powerup category by <code>PowerupManager.shouldAIUsePowerup()</code>:</p>
+                <p>For the <code>use_powerup</code> output the crisp number is <em>not</em> compared against a single global threshold the firing decision is made per powerup category by <code>PowerupManager.shouldAIUsePowerup()</code>:</p>
                 <ul>
                     <li><strong>Aggressive</strong> (missile, oil, EMP, tornado): <code>use_powerup &gt; 55</code> <em>and</em> the AI is losing <em>and</em> the player is either close or far enough ahead to be worth targeting.</li>
-                    <li><strong>Defensive — shield</strong>: <code>use_powerup &gt; 50</code> <em>and</em> (low HP or close-contact-while-losing).</li>
-                    <li><strong>Defensive — repair</strong>: fires below 45 % HP regardless of fuzzy score.</li>
+                    <li><strong>Defensive: shield</strong>: <code>use_powerup &gt; 50</code> <em>and</em> (low HP or close-contact-while-losing).</li>
+                    <li><strong>Defensive: repair</strong>: fires below 45 % HP regardless of fuzzy score.</li>
                     <li><strong>Speed</strong> (boost, nitro): <code>use_powerup &gt; 50</code> on a near-straight while losing, or <code>&gt; 85</code> as a panic-fire.</li>
                 </ul>
             </section>
@@ -220,10 +220,10 @@
                 <h2>Behaviour Layered on Top of Fuzzy Outputs</h2>
                 <p>The fuzzy engine produces the AI's <em>intent</em>. Three deterministic behaviours wrap that intent inside <code>js/ai.js</code> before it reaches the car:</p>
                 <ul>
-                    <li><strong>Per-tick noise</strong> — outputs are jittered by ±noise% (Rookie ±20%, Racer ±10%, Champion ±3%) to model human imperfection.</li>
-                    <li><strong>Rubber-banding</strong> — throttle is multiplied by a difficulty-dependent factor that grows when the AI is behind the player and shrinks slightly when it's far ahead. Strength is set by the chosen difficulty.</li>
-                    <li><strong>Stuck-against-wall auto-reverse</strong> — if the AI tries to throttle forward but barely moves for 0.7 s, the controller overrides the fuzzy outputs with a 700 ms burst of full brake (which the car physics interprets as reverse acceleration at low speed) with inverted steering at 60 % magnitude. After the burst the fuzzy controller resumes normally.</li>
-                    <li><strong>Champion-only: predict player powerup</strong> — when the player picks up a powerup, a Champion-difficulty AI holding a shield deploys it pre-emptively 400–1200 ms later.</li>
+                    <li><strong>Per-tick noise</strong> outputs are jittered by ±noise% (Rookie ±20%, Racer ±10%, Champion ±3%) to model human imperfection.</li>
+                    <li><strong>Rubber-banding</strong> throttle is multiplied by a difficulty-dependent factor that grows when the AI is behind the player and shrinks slightly when it's far ahead. Strength is set by the chosen difficulty.</li>
+                    <li><strong>Stuck-against-wall auto-reverse</strong> if the AI tries to throttle forward but barely moves for 0.7 s, the controller overrides the fuzzy outputs with a 700 ms burst of full brake (which the car physics interprets as reverse acceleration at low speed) with inverted steering at 60 % magnitude. After the burst the fuzzy controller resumes normally.</li>
+                    <li><strong>Champion-only: predict player powerup</strong> when the player picks up a powerup, a Champion-difficulty AI holding a shield deploys it pre-emptively 400–1200 ms later.</li>
                 </ul>
                 <p>The player has the same brake-becomes-reverse behaviour: hold <code>▼</code> while moving forward to brake, keep holding once stopped to reverse out (capped at 40 % of top speed).</p>
             </section>
@@ -310,17 +310,17 @@
         // Per-variable X-axis title shown beneath each chart so the
         // chart units are always self-describing.
         const AXIS_TITLES = {
-            distance:     'distance — px from AI to player',
-            player_speed: 'player_speed — % of player’s top speed',
-            corner:       'corner — sharpness (0 = straight, 100 = hairpin)',
-            health:       'health — % of AI’s max HP',
-            gap:          'gap — − behind  /  + ahead',
-            powerup:      'powerup — 0 = empty slot, 100 = holding one',
-            throttle:     'throttle — pedal %',
-            brake:        'brake — pedal %',
-            steering:     'steering — left ←   → right',
-            aggression:   'aggression — low → maximum',
-            use_powerup:  'use_powerup — urgency score'
+            distance:     'distance: px from AI to player',
+            player_speed: 'player_speed: % of player’s top speed',
+            corner:       'corner: sharpness (0 = straight, 100 = hairpin)',
+            health:       'health: % of AI’s max HP',
+            gap:          'gap: − behind  /  + ahead',
+            powerup:      'powerup: 0 = empty slot, 100 = holding one',
+            throttle:     'throttle: pedal %',
+            brake:        'brake: pedal %',
+            steering:     'steering: left ←   → right',
+            aggression:   'aggression: low → maximum',
+            use_powerup:  'use_powerup: urgency score'
         };
 
         function buildMFCard(varName, schema, engineVar) {
@@ -349,7 +349,7 @@
                 const W = rect.width, H = rect.height;
 
                 // Generous margins so the labelled axes + titles never crowd
-                // the plot — important for legibility when projected/explained.
+                // the plot: important for legibility when projected/explained.
                 const ML = 46, MR = 20, MT = 18, MB = 46;
                 const PW = W - ML - MR;   // plot width
                 const PH = H - MT - MB;   // plot height
@@ -778,7 +778,7 @@
             bodyKitGrid.appendChild(card);
         }
 
-        // Paint tab — primary swatches
+        // Paint tab: primary swatches
         const paintSwatches = document.getElementById('paintSwatches');
         PaintPresets.forEach(color => {
             const s = document.createElement('div');
@@ -794,7 +794,7 @@
             paintSwatches.appendChild(s);
         });
 
-        // Paint tab — accent swatches
+        // Paint tab: accent swatches
         const accentSwatches = document.getElementById('accentSwatches');
         PaintPresets.forEach(color => {
             const s = document.createElement('div');
