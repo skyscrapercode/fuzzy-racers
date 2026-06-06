@@ -1208,12 +1208,24 @@
    The max-height condition also catches phone-landscape (e.g. 812x375), where
    width is fine but height is too short for the 100vh-locked layout. */
 @media (max-width: 760px), (max-height: 500px) {
+    /* Globally `body { overflow: hidden }` (main.css) so the desktop garage
+     * can lock to a single viewport. On phones we want the PAGE to scroll
+     * (iOS-native: address bar collapses, momentum scrolling, etc.), so we
+     * release html + body and let #garage grow naturally with content. */
+    html, body {
+        height: auto;
+        min-height: 100%;
+        overflow: auto;
+        overflow-x: hidden;
+    }
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
     #garage {
         height: auto;
         min-height: 100vh;
         min-height: 100dvh;            /* accounts for mobile browser chrome */
-        overflow-x: hidden;
-        overflow-y: auto;
+        overflow: visible;             /* let the body scroll, not #garage */
         padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
         gap: 0.85rem;
         grid-template-rows: auto auto auto;
