@@ -141,6 +141,27 @@ const Race = {
             || (window.DeviceInfo && window.DeviceInfo.touchPrimary)
             || !!(mm && mm('(any-pointer: coarse)').matches && !mm('(any-pointer: fine)').matches);
 
+        // Orientation gate: on a touch device the rotate-to-landscape prompt
+        // (touch-controls.js) covers the screen in portrait. While that prompt
+        // is up the race must NOT progress in the background -- no countdown
+        // ticking down, no AI driving, no engine sound. The flag short-circuits
+        // _loop() and silences the engine; we re-enter normally as soon as the
+        // device is in landscape.
+        const isPortrait = () => window.innerHeight > window.innerWidth;
+        this._waitingForLandscape = this._touch && isPortrait();
+        window.addEventListener('resize', () => {
+            if (!this._touch) return;
+            const portraitNow = isPortrait();
+            if (this._waitingForLandscape && !portraitNow) {
+                // Landscape resumed: avoid a giant dt spike on the next tick.
+                this._waitingForLandscape = false;
+                this.lastFrameTime = performance.now();
+            } else if (!this._waitingForLandscape && portraitNow) {
+                this._waitingForLandscape = true;
+                if (typeof AudioManager !== 'undefined') AudioManager.updateEngine(0);
+            }
+        });
+
         // Input
         this._setupInput();
         this._setupInspector();
@@ -630,6 +651,17 @@ const Race = {
         if (this._cancelled) return;
         const dt = Math.min((now - this.lastFrameTime) / 1000, 0.05);
         this.lastFrameTime = now;
+
+        // Touch device held in portrait: the rotate prompt covers the screen,
+        // so freeze the race (no countdown progress, no AI driving, no engine
+        // hum) until the user rotates to landscape. Still render the static
+        // scene so it doesn't go black behind a partially-transparent prompt.
+        if (this._waitingForLandscape) {
+            if (typeof AudioManager !== 'undefined') AudioManager.updateEngine(0);
+            this._render();
+            this._rafId = requestAnimationFrame((t) => this._loop(t));
+            return;
+        }
 
         switch (this.phase) {
             case 'countdown': this._tickCountdown(dt); break;
