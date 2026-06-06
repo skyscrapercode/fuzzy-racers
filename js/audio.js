@@ -41,6 +41,7 @@ const AudioManager = {
     musicGain: null,
     sfxGain: null,
     enabled: true,
+    level: 0.7,            // 0..1 master volume level (the Settings slider)
     _unlocked: false,
 
     // Engine voice (continuous while a race runs).
@@ -54,7 +55,7 @@ const AudioManager = {
     // ------------------------------------------------------------------------
 
     /** Create the context + gain buses on demand. Reads the saved Master Volume
-     *  setting so we start muted/unmuted to match the toggle. */
+     *  on/off + level so we start matching the Settings controls. */
     _ensure() {
         if (this.ctx) return true;
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -70,15 +71,17 @@ const AudioManager = {
         this.sfxGain.connect(this.masterGain);
         this.masterGain.connect(this.ctx.destination);
 
-        // Honour the persisted setting (the toggle defaults to on).
+        // Honour the persisted settings (toggle defaults on, level defaults 0.7).
         let on = true;
         try {
             if (typeof State !== 'undefined' && State.get('settings')) {
-                on = State.get('settings').volume !== false;
+                const s = State.get('settings');
+                on = s.volume !== false;
+                if (typeof s.volumeLevel === 'number') this.level = s.volumeLevel;
             }
         } catch (e) { /* ignore */ }
         this.enabled = on;
-        this.masterGain.gain.value = on ? 1 : 0;
+        this.masterGain.gain.value = on ? this.level : 0;
         return true;
     },
 
@@ -110,14 +113,26 @@ const AudioManager = {
 
     setEnabled(on) {
         this.enabled = !!on;
+        this._applyGain();
+    },
+
+    /** Set the master volume level (0..1) from the Settings slider. */
+    setVolume(level) {
+        this.level = Math.max(0, Math.min(1, level));
+        this._applyGain();
+    },
+
+    /** Drive the master gain from the current enabled + level state. */
+    _applyGain() {
         if (!this.ctx) return;                 // applied when context is created
         const g = this.masterGain.gain;
         const t = this.ctx.currentTime;
         g.cancelScheduledValues(t);
-        g.setTargetAtTime(this.enabled ? 1 : 0, t, 0.02);
+        g.setTargetAtTime(this.enabled ? this.level : 0, t, 0.02);
     },
 
     isEnabled() { return this.enabled; },
+    getVolume() { return this.level; },
 
     // ------------------------------------------------------------------------
     // Low-level voices

@@ -111,6 +111,19 @@
 
             <div class="setting-row">
                 <div>
+                    <div class="setting-label">Volume Level</div>
+                    <div class="setting-hint">Drag to make the game quieter or louder</div>
+                </div>
+                <div class="volume-control">
+                    <input type="range" id="range-volume" class="slider"
+                           min="0" max="100" step="1" value="70"
+                           aria-label="Volume level">
+                    <span class="volume-value" id="volume-value">70%</span>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div>
                     <div class="setting-label">Visual Quality</div>
                     <div class="setting-hint">Low disables particles and glow for performance</div>
                 </div>
@@ -139,11 +152,16 @@
         const _saved = (typeof State !== 'undefined' && State.get('settings')) || {};
         const settings = {
             volume:  _saved.volume !== false,        // default on
+            volumeLevel: (typeof _saved.volumeLevel === 'number') ? _saved.volumeLevel : 0.7,
             quality: _saved.quality || 'high'
         };
         function saveSettings() {
             if (typeof State !== 'undefined') {
-                State.set('settings', { volume: settings.volume, quality: settings.quality });
+                State.set('settings', {
+                    volume: settings.volume,
+                    volumeLevel: settings.volumeLevel,
+                    quality: settings.quality
+                });
             }
         }
 
@@ -186,6 +204,22 @@
             volToggle.setAttribute('aria-checked', String(settings.volume));
             saveSettings();
             if (typeof AudioManager !== 'undefined') AudioManager.setEnabled(settings.volume);
+        });
+
+        // Volume slider: reflect saved level, persist, and drive the audio live.
+        const volRange = document.getElementById('range-volume');
+        const volValue = document.getElementById('volume-value');
+        function reflectVolume() {
+            const pct = Math.round(settings.volumeLevel * 100);
+            volRange.value = pct;
+            volValue.textContent = pct + '%';
+        }
+        reflectVolume();
+        volRange.addEventListener('input', () => {
+            settings.volumeLevel = (parseInt(volRange.value, 10) || 0) / 100;
+            volValue.textContent = Math.round(settings.volumeLevel * 100) + '%';
+            saveSettings();
+            if (typeof AudioManager !== 'undefined') AudioManager.setVolume(settings.volumeLevel);
         });
 
         // Quality segmented: reflect saved state and persist on change.

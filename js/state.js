@@ -34,6 +34,7 @@ const State = {
         trackId: 'city',
         settings: {
             volume: true,
+            volumeLevel: 0.7,
             quality: 'high'
         },
         lastResult: null
