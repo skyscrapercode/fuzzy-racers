@@ -134,6 +134,13 @@ const Race = {
         // updates are driven from World3D.render().
         World3D.init(this.canvas3d, this.track, this.cars, this.player);
 
+        // Touch device? (drives the touch-friendly HUD layout that keeps the
+        // screen corners clear for the on-screen controls in touch-controls.js).
+        const mm = window.matchMedia ? window.matchMedia.bind(window) : null;
+        this._touch = /[?&]touch=1(?:&|$)/.test(location.search)
+            || (window.DeviceInfo && window.DeviceInfo.touchPrimary)
+            || !!(mm && mm('(any-pointer: coarse)').matches && !mm('(any-pointer: fine)').matches);
+
         // Input
         this._setupInput();
         this._setupInspector();
@@ -935,19 +942,32 @@ const Race = {
         ctx.shadowBlur = 0;
         ctx.restore();
 
-        // --- Top-right: minimap ---
-        Renderer.drawMinimap(ctx, this.track, this.cars,
-            { x: W - 240, y: 20, w: 220, h: 160 });
-
-        // --- Bottom-left: speedometer + health ---
-        this._drawSpeedometer(ctx, 90, H - 100, 64, player.speed, player.maxSpeed);
-        this._drawHealthBar(ctx, 175, H - 50, 230, 18, player.health, player.maxHealth);
-
-        // --- Bottom-center: held powerup ---
-        this._drawPowerupSlot(ctx, W/2 - 50, H - 130, 100, 100, player.powerupSlot);
-
-        // --- Bottom-right: opponent health (mini) + tips ---
-        this._drawOpponentBadge(ctx, W - 240, H - 60, 220, 40, this.ai);
+        if (!this._touch) {
+            // ---- Desktop layout ----
+            // Top-right: minimap
+            Renderer.drawMinimap(ctx, this.track, this.cars,
+                { x: W - 240, y: 20, w: 220, h: 160 });
+            // Bottom-left: speedometer + health
+            this._drawSpeedometer(ctx, 90, H - 100, 64, player.speed, player.maxSpeed);
+            this._drawHealthBar(ctx, 175, H - 50, 230, 18, player.health, player.maxHealth);
+            // Bottom-center: held powerup
+            this._drawPowerupSlot(ctx, W/2 - 50, H - 130, 100, 100, player.powerupSlot);
+            // Bottom-right: opponent health (mini)
+            this._drawOpponentBadge(ctx, W - 240, H - 60, 220, 40, this.ai);
+        } else {
+            // ---- Touch layout: keep the four screen corners free for the
+            // on-screen buttons, so HUD lives in the top band + bottom-centre. ----
+            const mm = { x: W - 236, y: 16, w: 168, h: 104 };
+            // Top-right: minimap (shifted left of the pause/inspector buttons).
+            Renderer.drawMinimap(ctx, this.track, this.cars, mm);
+            // Top-left, under the lap: speedometer + health side by side.
+            this._drawSpeedometer(ctx, 70, 156, 42, player.speed, player.maxSpeed);
+            this._drawHealthBar(ctx, 132, 138, 150, 14, player.health, player.maxHealth);
+            // Under the minimap: opponent badge.
+            this._drawOpponentBadge(ctx, mm.x, mm.y + mm.h + 10, mm.w, 34, this.ai);
+            // Bottom-centre (clear gap between the control clusters): powerup.
+            this._drawPowerupSlot(ctx, W/2 - 44, H - 128, 88, 88, player.powerupSlot, '[ TAP ⚡ ]');
+        }
     },
 
     _drawSpeedometer(ctx, cx, cy, r, speed, maxSpeed) {
@@ -1027,7 +1047,7 @@ const Race = {
         ctx.restore();
     },
 
-    _drawPowerupSlot(ctx, x, y, w, h, slotId) {
+    _drawPowerupSlot(ctx, x, y, w, h, slotId, hint) {
         const type = slotId ? getPowerupType(slotId) : null;
         ctx.save();
         // Frame
@@ -1062,7 +1082,7 @@ const Race = {
             ctx.fillText(type.name.toUpperCase(), x + w/2, y + h + 12);
             ctx.fillStyle = 'rgba(255,255,255,0.75)';
             ctx.font = '700 9px monospace';
-            ctx.fillText('[ SPACE ]', x + w/2, y + h + 26);
+            ctx.fillText(hint || '[ SPACE ]', x + w/2, y + h + 26);
         } else {
             ctx.fillStyle = 'rgba(255,255,255,0.25)';
             ctx.font = '900 32px sans-serif';

@@ -4,7 +4,7 @@ An HTML5 racing game whose AI opponents are driven by a Mamdani-style fuzzy infe
 
 The race world is rendered in **3D with Three.js** (vendored locally, so there is no build step and no CDN dependency). Everything else (the menu, garage, HUD overlays, results page, and the **entire fuzzy engine**) is hand-written vanilla JavaScript and Canvas 2D. Every in-game prop, car, and effect is procedural geometry; the only static asset is an SVG favicon. All cross-page state is saved to `localStorage` under the `fuzzyRacers_` namespace.
 
-> **Desktop + keyboard required.** The game is controlled entirely with the keyboard, so touch-only phones and tablets are blocked with a "Desktop Only" screen (`js/device-guard.js`).
+> **Plays on desktop and touch devices.** Use a keyboard on a laptop/desktop, or on-screen touch controls on phones and tablets (iPhone / iPad / Android). On a touch device the race shows steering, accelerate/brake, powerup, and pause buttons (`js/touch-controls.js`), and prompts you to rotate to landscape.
 
 ## Quick start
 
@@ -105,7 +105,7 @@ The results page shows:
 
 ## Requirements
 
-- A desktop or laptop with a **physical keyboard** (touch-only devices are blocked).
+- A desktop/laptop with a keyboard, **or** a touchscreen phone/tablet (on-screen controls, best in landscape).
 - A modern browser with WebGL (for the Three.js race world) and SVG favicon support.
 - No installation or build step; it is plain static files.
 
@@ -128,7 +128,8 @@ The results page shows:
     ├── vendor/
     │   ├── three.min.js       Three.js r128 (vendored for offline use)
     │   └── postprocessing.js  Three.js r128 bloom add-ons (EffectComposer / UnrealBloomPass)
-    ├── device-guard.js  desktop-only guard (loaded first on every page)
+    ├── device-guard.js  device detection: tags <html> with touch-capability classes (loaded first)
+    ├── touch-controls.js on-screen race controls for phones/tablets (race page only)
     ├── state.js         localStorage state (loaded first on every page)
     ├── audio.js         procedural Web Audio engine (SFX + generative music)
     ├── fuzzy.js         Mamdani fuzzy inference engine + 33-rule base
