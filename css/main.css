@@ -1086,3 +1086,26 @@ body.results-body {
     .fuzzy-summary { grid-template-columns: 1fr; }
     #pieChart { max-width: 320px; }
 }
+
+/* Phones (and phone-landscape, via the max-height match): cap the podium so it
+ * doesn't dominate the screen, compact the page padding, and shrink the
+ * action buttons so all four fit narrow widths. */
+@media (max-width: 760px), (max-height: 500px) {
+    #results {
+        padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+        gap: 1rem;
+    }
+    .podium-panel { min-height: 240px; }
+    #podiumCanvas { min-height: 240px; }
+    .results-buttons {
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    .btn-result {
+        flex: 1 1 calc(50% - 0.3rem);
+        justify-content: center;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        padding: 0.7rem 0.6rem;
+    }
+}

@@ -1189,11 +1189,60 @@
 
 
 @media (max-width: 1100px) {
+    /* minmax(0, 1fr), not bare 1fr: the car-card canvases have a min-content
+       width that would otherwise balloon the columns past the viewport. */
     .garage-body {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
     .car-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: repeat(3, auto);
+    }
+}
+
+/* ===================== MOBILE: phones & small tablets ===================== */
+/* The desktop garage is locked to a single non-scrolling 100vh viewport. On
+   narrow screens that clips content, so here we let the page grow and scroll,
+   wrap the header, and compact the footer. (The car grid + customize/opponent
+   panels already collapse to one column via the 1100px / 1280px queries.)
+   The max-height condition also catches phone-landscape (e.g. 812x375), where
+   width is fine but height is too short for the 100vh-locked layout. */
+@media (max-width: 760px), (max-height: 500px) {
+    #garage {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;            /* accounts for mobile browser chrome */
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+        gap: 0.85rem;
+        grid-template-rows: auto auto auto;
+    }
+
+    /* Header: title centred on top, docs button + step indicator wrap below. */
+    .garage-header { flex-wrap: wrap; justify-content: center; gap: 0.5rem 0.75rem; }
+    .garage-title  { width: 100%; text-align: center; }
+    .garage-step   { width: 100%; text-align: center; font-size: 0.7rem; letter-spacing: 0.16em; }
+
+    /* Two option icons / opponents per row; no nested inner scrolling. */
+    .opt-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .opponent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .config-row    { grid-template-columns: 1fr; }
+    /* Difficulty cards stack full-width: 3 across is too cramped to read the
+       reaction/mistakes/powerups rows on a phone. */
+    .cfg-grid      { grid-template-columns: 1fr; }
+    .opponent-body { overflow: visible; padding-right: 0; min-height: 0; }
+    .customize-left,
+    .customize-right { overflow: visible; }
+
+    /* Footer: keep Back + Next on one row, compact so both fit narrow widths. */
+    .garage-footer { gap: 0.6rem; }
+    .btn-secondary,
+    .btn-primary {
+        flex: 1 1 0;
+        justify-content: center;
+        font-size: 0.74rem;
+        letter-spacing: 0.08em;
+        padding: 0.7rem 0.6rem;
     }
 }
