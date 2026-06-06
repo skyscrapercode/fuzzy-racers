@@ -994,8 +994,19 @@ class Car {
         if (impactVel > 60) {
             const dmg = Math.min(6, (impactVel - 60) * 0.025);
             this.takeDamage(dmg);
+            this._collisionSound(impactVel / 400);
         }
         return true;
+    }
+
+    /** Play a rate-limited collision thud for the player's impacts only, so
+     *  the AI scraping distant walls doesn't pepper the mix. */
+    _collisionSound(intensity) {
+        if (!this.isPlayer || typeof AudioManager === 'undefined') return;
+        const now = performance.now();
+        if (now - (this._lastCollisionSound || 0) < 180) return;
+        this._lastCollisionSound = now;
+        AudioManager.collision(intensity);
     }
 
     /**
@@ -1036,6 +1047,8 @@ class Car {
             const dmg = (closing - 80) * 0.04;
             this.takeDamage(dmg);
             other.takeDamage(dmg);
+            // `this` is the player in race.js (player.checkCarCollision(ai)).
+            this._collisionSound(closing / 400);
         }
         return true;
     }

@@ -139,6 +139,12 @@ const Race = {
         this._setupInspector();
         this._setupPauseMenu();
 
+        // Audio: unlock on first gesture and start the race music + engine.
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.attachUnlock({ music: 'race' });
+            AudioManager.startEngine();
+        }
+
         // Resize + start loop
         window.addEventListener('resize', () => this._fitCanvas());
         this._fitCanvas();
@@ -152,6 +158,10 @@ const Race = {
         window.addEventListener('pagehide', () => {
             this._cancelled = true;
             if (this._rafId) cancelAnimationFrame(this._rafId);
+            if (typeof AudioManager !== 'undefined') {
+                AudioManager.stopEngine();
+                AudioManager.stopMusic();
+            }
         });
     },
 
@@ -538,7 +548,8 @@ const Race = {
             if (down) {
                 if (k === ' ' || k === 'Spacebar') {
                     if (this.phase === 'racing') {
-                        PowerupManager.activatePowerup(this.player, this.cars, this.track);
+                        const used = PowerupManager.activatePowerup(this.player, this.cars, this.track);
+                        if (used && typeof AudioManager !== 'undefined') AudioManager.activatePowerup(used);
                     }
                     e.preventDefault();
                 }
@@ -590,6 +601,8 @@ const Race = {
         this.phase = 'paused';
         this.pauseMenuOpen = true;
         this.pauseMenuEl.classList.add('open');
+        // Drop the engine to idle while paused (the loop is frozen).
+        if (typeof AudioManager !== 'undefined') AudioManager.updateEngine(0);
     },
 
     _resumeFromPause() {
@@ -633,6 +646,10 @@ const Race = {
         if (this.countdown.timer >= 1) {
             this.countdown.timer = 0;
             this.countdown.phase++;
+            if (typeof AudioManager !== 'undefined') {
+                if (this.countdown.phase < 3) AudioManager.countdownBeep(); // "2", "1"
+                else if (this.countdown.phase === 3) AudioManager.go();     // "GO!"
+            }
             if (this.countdown.phase >= 4) {
                 this.phase = 'racing';
                 this.startedAt = performance.now();
@@ -670,6 +687,22 @@ const Race = {
         }
         this.player.checkCarCollision(this.ai);
 
+        // --- Engine pitch + tyre screech + pickup chime (player only) ---
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.updateEngine(this.player.speed / Math.max(1, this.player.maxSpeed));
+            // Player collected a powerup this frame (slot went empty → filled).
+            if (this.player.powerupSlot && !this._prevPlayerSlot) AudioManager.pickup();
+            this._prevPlayerSlot = this.player.powerupSlot;
+            // Screech when cornering hard at speed (rate-limited).
+            const steer = (k.ArrowRight ? 1 : 0) - (k.ArrowLeft ? 1 : 0);
+            const fast  = this.player.speed > this.player.maxSpeed * 0.45;
+            const now   = performance.now();
+            if (steer !== 0 && fast && now - (this._lastScreech || 0) > 260) {
+                this._lastScreech = now;
+                AudioManager.screech(this.player.speed / Math.max(1, this.player.maxSpeed));
+            }
+        }
+
         // --- Per-frame stats (top speed, damage taken) ---
         for (const c of this.cars) {
             if (c.speed > c._stats.topSpeed) c._stats.topSpeed = c.speed;
@@ -686,6 +719,7 @@ const Race = {
             if (c.exploded && !c._explosionTriggered) {
                 c._explosionTriggered = true;
                 this._spawnExplosion(c);
+                if (typeof AudioManager !== 'undefined') AudioManager.explosion();
                 // Winner is locked on the first explosion only if both
                 // cars die in the same frame, whoever exploded first still
                 // hands the win to the other.
@@ -726,6 +760,8 @@ const Race = {
                 c._sawMidLap = false;
                 if (c.lap >= TOTAL_LAPS && this.phase === 'racing') {
                     this._finish(c);
+                } else if (c === this.player && typeof AudioManager !== 'undefined') {
+                    AudioManager.lap();
                 }
             }
             c.waypointIndex = newIdx;
@@ -782,6 +818,13 @@ const Race = {
         this.phase = 'finished';
         this.finishedAt = performance.now();
         this.winner = winner;
+
+        // Audio: cut the engine, fade the music out, play the finish fanfare.
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.stopEngine();
+            AudioManager.stopMusic();
+            AudioManager.finish();
+        }
 
         const time = (this.finishedAt - this.startedAt) / 1000;
         const pos = this._positions();

@@ -246,7 +246,8 @@ class AIController {
         const shouldUse = PowerupManager.shouldAIUsePowerup(this.car, this.cached, ctx);
 
         if (shouldUse) {
-            PowerupManager.activatePowerup(this.car, raceState.cars, raceState.track);
+            const used = PowerupManager.activatePowerup(this.car, raceState.cars, raceState.track);
+            if (used && typeof AudioManager !== 'undefined') AudioManager.activatePowerup(used);
             return;
         }
 
@@ -255,7 +256,8 @@ class AIController {
         if (this.params.predictsPlayer && this.car.powerupSlot === 'shield') {
             const since = performance.now() - this._playerArmedAt;
             if (this._lastPlayerSlot && since > 400 && since < 1200) {
-                PowerupManager.activatePowerup(this.car, raceState.cars, raceState.track);
+                const used = PowerupManager.activatePowerup(this.car, raceState.cars, raceState.track);
+                if (used && typeof AudioManager !== 'undefined') AudioManager.activatePowerup(used);
             }
         }
     }
