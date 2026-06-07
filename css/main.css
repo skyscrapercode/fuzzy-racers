@@ -385,16 +385,20 @@ body:has(.modal.open) .btn::after {
 }
 
 .modal-section li {
-    padding: 0.35rem 0;
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
+    /* Block (not flex): a flex li turns every inline piece (text, <strong>,
+     * the text after it, key chips) into separate non-wrapping columns, which
+     * overflow and clip on narrow screens. Block lets it all flow + wrap. The
+     * ▸ marker is positioned in the left padding. */
+    position: relative;
+    padding: 0.35rem 0 0.35rem 1.4rem;
 }
 
 .modal-section li::before {
     content: '▸';
+    position: absolute;
+    left: 0;
+    top: 0.35rem;
     color: var(--neon-cyan);
-    flex-shrink: 0;
 }
 
 .modal-section strong {
