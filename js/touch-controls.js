@@ -35,6 +35,28 @@
          !window.matchMedia('(any-pointer: fine)').matches);
     if (!touchPrimary) return;
 
+    // ------------------------------------------------------------------------
+    // Disable zoom during the race so players can't accidentally pinch /
+    // double-tap mid-race. The viewport meta (user-scalable=no, maximum-scale=1)
+    // covers Android Chrome, but iOS Safari ignores it, so block the zoom
+    // gestures directly. We deliberately do NOT preventDefault touchmove (that
+    // can fire pointercancel and drop a held steering/accelerate button).
+    // ------------------------------------------------------------------------
+    function disableZoom() {
+        // Pinch-zoom (iOS Safari gesture events).
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
+            document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
+        });
+        // Double-tap-to-zoom: swallow the second tap if it lands within 300ms.
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, { passive: false });
+    }
+    disableZoom();
+
     function key(type, k) {
         window.dispatchEvent(new KeyboardEvent(type, { key: k, bubbles: true }));
     }
