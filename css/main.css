@@ -154,29 +154,11 @@ nav a {
         inset 0 0 18px rgba(0, 234, 255, 0.08);
 }
 
-/* Animated gradient border (rendered via ::before mask).
- * Inset of -3px makes the border ring thicker and more obviously colorful. */
-.btn::before {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: inherit;
-    background: var(--grad);
-    background-size: 300% 100%;
-    animation: borderFlow 5s linear infinite;
-    z-index: -2;
-    /* Soft drop shadow so the ring itself emits glow into the surrounding area. */
-    filter: drop-shadow(0 0 8px rgba(0, 234, 255, 0.45));
-}
-
-.btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: var(--bg);
-    z-index: -1;
-}
+/* The button's glow comes entirely from box-shadow (above). We intentionally
+ * do NOT use a ::before gradient ring here: it was hidden on desktop (covered
+ * by a dark ::after + overflow:hidden) yet leaked a rainbow at the rounded
+ * corners on iOS Safari, which fails to clip a composited (animated + filtered)
+ * pseudo-element to border-radius. Dropping it makes every platform match. */
 
 .btn:hover {
     transform: translateY(-2px);
@@ -186,11 +168,6 @@ nav a {
         0 0 28px rgba(0, 234, 255, 0.7),
         0 0 60px rgba(255, 43, 214, 0.35),
         inset 0 0 22px rgba(0, 234, 255, 0.18);
-}
-
-.btn:hover::before {
-    animation-duration: 1.5s;
-    filter: drop-shadow(0 0 14px rgba(0, 234, 255, 0.7));
 }
 
 .btn:active {
@@ -222,7 +199,6 @@ nav a {
 
 @media (prefers-reduced-motion: reduce) {
     .menu-buttons .btn { animation: none; }
-    .btn::before { animation: none; }
 }
 
 .btn-icon {
@@ -258,9 +234,7 @@ nav a {
  * like rule bars overflowing past their container. */
 body:has(.modal.open) .fuzzy-summary::before,
 body:has(.modal.open) .podium-panel::before,
-body:has(.modal.open) .preview-panel::before,
-body:has(.modal.open) .btn::before,
-body:has(.modal.open) .btn::after {
+body:has(.modal.open) .preview-panel::before {
     animation-play-state: paused;
     opacity: 0;
 }
