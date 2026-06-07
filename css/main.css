@@ -138,6 +138,13 @@ nav a {
     cursor: pointer;
     overflow: hidden;
     isolation: isolate;
+    /* Reset native control styling: <button class="btn"> otherwise gets iOS
+     * Safari's native push-button look (wrong font/background/corners), so the
+     * How to Play / Settings buttons rendered differently from the Start Race
+     * <a> on iPhone / iPad. This makes every .btn render identically. */
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
     transition: transform 0.15s ease, box-shadow 0.25s ease, letter-spacing 0.25s ease;
     /* Default ambient glow so the button outline is clearly visible at rest. */
     box-shadow:
