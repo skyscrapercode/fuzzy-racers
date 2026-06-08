@@ -25,15 +25,6 @@
 (function () {
     'use strict';
 
-    // ========================================================================
-    // CREDITS: fill in your details (shown by the "Credits" button).
-    // ========================================================================
-    const CREDITS = {
-        name:      'SHEIKH ADAM BAJUNID BIN MOHD FAISAL',
-        studentId: '2025241314'
-    };
-    // ========================================================================
-
     // The ONLY inputs the assistant accepts (rendered as quick-reply buttons).
     const QUESTIONS = [
         'What is it?',
@@ -71,8 +62,11 @@
         'Credits':
             "FUZZY RACERS\n"
           + "\n"
-          + "Name: " + CREDITS.name + "\nRole: Creator, Developer & Maintainer\n"
-          + "Student ID: " + CREDITS.studentId + "\n"
+          + "Name: " + "SHEIKH ADAM BAJUNID BIN MOHD FAISAL (2025241314)" + "\nRole: Creator, Developer & Maintainer\n"
+          + "Name: " + "PRIVATE CONTRIBUTOR" + "\nRole: Designer, Beta-Tester\n"
+          + "Name: " + "PRIVATE CONTRIBUTOR" + "\nRole: Beta-Tester\n"
+          + "Name: " + "PRIVATE CONTRIBUTOR" + "\nRole: Beta-Tester\n"
+          + "Name: " + "PRIVATE CONTRIBUTOR" + "\nRole: Beta-Tester\n"
           + "\n"
           + "Goal: an interactive demonstration of fuzzy logic for the ISP568 Fuzzy Logic "
           + "Systems course. The AI opponents drive using a Mamdani-style fuzzy inference "
