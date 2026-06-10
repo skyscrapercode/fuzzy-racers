@@ -1200,18 +1200,16 @@
     }
 }
 
-/* ===================== MOBILE: phones & small tablets ===================== */
-/* The desktop garage is locked to a single non-scrolling 100vh viewport. On
-   narrow screens that clips content, so here we let the page grow and scroll,
-   wrap the header, and compact the footer. (The car grid + customize/opponent
-   panels already collapse to one column via the 1100px / 1280px queries.)
-   The max-height condition also catches phone-landscape (e.g. 812x375), where
-   width is fine but height is too short for the 100vh-locked layout. */
-@media (max-width: 760px), (max-height: 500px) {
-    /* Globally `body { overflow: hidden }` (main.css) so the desktop garage
-     * can lock to a single viewport. On phones we want the PAGE to scroll
-     * (iOS-native: address bar collapses, momentum scrolling, etc.), so we
-     * release html + body and let #garage grow naturally with content. */
+/* ============== SCROLL RELEASE: stacked or short viewports ============== */
+/* Globally `body { overflow: hidden }` (main.css) so the desktop garage can
+   lock to a single non-scrolling 100vh viewport. That lock clips content
+   whenever the layout is taller than the window:
+   - at <= 1100px wide the layout stacks into one column (much taller), and
+   - short windows (e.g. a 1366x768 laptop: ~614px viewport at 125% display
+     scaling, or ~670px maximized at 100% once browser chrome is counted)
+     can't fit even the two-column layout.
+   In both cases release html + body and let the page scroll naturally. */
+@media (max-width: 1100px), (max-height: 760px) {
     html, body {
         height: auto;
         min-height: 100%;
@@ -1226,9 +1224,19 @@
         min-height: 100vh;
         min-height: 100dvh;            /* accounts for mobile browser chrome */
         overflow: visible;             /* let the body scroll, not #garage */
+        grid-template-rows: auto auto auto;
+    }
+}
+
+/* ===================== MOBILE: phones & small tablets ===================== */
+/* Cosmetic compaction for genuinely small screens (the scroll release above
+   already applies, since these conditions are subsets of it): wrap the header,
+   compact the footer, and stack the option/difficulty grids. The max-height
+   condition also catches phone-landscape (e.g. 812x375). */
+@media (max-width: 760px), (max-height: 500px) {
+    #garage {
         padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
         gap: 0.85rem;
-        grid-template-rows: auto auto auto;
     }
 
     /* Header: title centred on top, docs button + step indicator wrap below. */
