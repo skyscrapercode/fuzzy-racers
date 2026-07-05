@@ -88,11 +88,22 @@ const World3D = {
         this.particlePool = [];
         this._dotTexture = this._makeDotTexture();
 
+        // ---- Quality (drives the performance vs fidelity trade-offs below) ----
+        const quality = (typeof State !== 'undefined' && State.get('settings'))
+            ? State.get('settings').quality : 'high';
+        this._lowQuality = quality === 'low';
+
         // ---- Renderer ----
+        // antialias off: on High the bloom pass's blur already softens edges,
+        // and on Low we trade a little aliasing for speed. This avoids paying
+        // for MSAA on top of everything else.
         this.renderer = new THREE.WebGLRenderer({
-            canvas, antialias: true, alpha: false
+            canvas, antialias: false, alpha: false
         });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        // Cap the pixel ratio: at 2x DPR the GPU renders 4x the pixels (then
+        // bloom on top). 1.5 stays crisp for far less cost; Low renders at 1x.
+        const maxDpr = this._lowQuality ? 1 : 1.5;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         // No tone mapping: keep the original (darker, more saturated) sky and
@@ -115,6 +126,7 @@ const World3D = {
         this.camera.lookAt(player.x, 8, player.y);
         this._camTargetPos  = this.camera.position.clone();
         this._camTargetLook = new THREE.Vector3(player.x, 8, player.y);
+        this._lookVec = new THREE.Vector3();   // reused each frame (no per-frame alloc)
 
         // ---- Lights ----
         const sun = new THREE.DirectionalLight(0xffffff, 0.95);
@@ -954,14 +966,10 @@ const World3D = {
         // Smoothly approach camera target
         this._camTargetPos.set(tx, camHeight, tz);
         this.camera.position.lerp(this._camTargetPos, 0.18);
-        // Look slightly ahead of the player
+        // Look slightly ahead of the player (reuse a vector to avoid GC churn)
         const lookAhead = 30;
-        const lookTarget = new THREE.Vector3(
-            p.x + cosA * lookAhead,
-            10,
-            p.y + sinA * lookAhead
-        );
-        this._camTargetLook.lerp(lookTarget, 0.22);
+        this._lookVec.set(p.x + cosA * lookAhead, 10, p.y + sinA * lookAhead);
+        this._camTargetLook.lerp(this._lookVec, 0.22);
         this.camera.lookAt(this._camTargetLook);
 
         // ---- Render (through the bloom composer when available) ----
@@ -1042,7 +1050,9 @@ const World3D = {
         const safe = geom.halfRoadWidth + 38;
 
         // Sample N candidate points, place a prop if it's far enough from the road.
-        const SAMPLES = geom.id === 'city' ? 240 : 200;
+        // Low quality places far fewer props (fewer meshes / draw calls).
+        const base = geom.id === 'city' ? 240 : 200;
+        const SAMPLES = this._lowQuality ? Math.round(base * 0.4) : base;
         let placed = 0;
         for (let i = 0; i < SAMPLES; i++) {
             const x = minX + rand() * (maxX - minX);

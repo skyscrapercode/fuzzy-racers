@@ -746,16 +746,7 @@ const Renderer = {
         const w = opts.w || 220, h = opts.h || 160;
         const pad = 10;
 
-        // Background panel
-        ctx.save();
-        ctx.fillStyle = 'rgba(10, 12, 22, 0.78)';
-        ctx.strokeStyle = 'rgba(0, 234, 255, 0.45)';
-        ctx.lineWidth = 1;
-        roundedRect(ctx, x, y, w, h, 8);
-        ctx.fill();
-        ctx.stroke();
-
-        // Compute scale
+        // Scale + world→minimap mapping (global, includes the panel offset).
         const b = geom.bounds;
         const tw = b.maxX - b.minX;
         const th = b.maxY - b.minY;
@@ -764,33 +755,59 @@ const Renderer = {
         const offY = y + (h - th * scale) / 2 - b.minY * scale;
         const M = (p) => ({ x: offX + p.x * scale, y: offY + p.y * scale });
 
-        // Track outline (centerline)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.lineWidth = Math.max(2, geom.halfRoadWidth * scale * 1.8);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        for (let i = 0; i < geom.waypoints.length; i++) {
-            const p = M(geom.waypoints[i]);
-            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        // ---- Static layer (panel + track + start dot) is cached to an
+        // offscreen canvas and just blitted each frame, instead of re-stroking
+        // the whole waypoint path every frame. Rebuilt only when the track or
+        // panel size changes. ----
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const key = geom.id + ':' + w + 'x' + h + '@' + dpr;
+        let cache = this._minimapCache;
+        if (!cache || cache.key !== key) {
+            const cnv = (cache && cache.canvas) || document.createElement('canvas');
+            cnv.width  = Math.round(w * dpr);
+            cnv.height = Math.round(h * dpr);
+            const cc = cnv.getContext('2d');
+            cc.setTransform(dpr, 0, 0, dpr, 0, 0);
+            // Local mapping (panel origin at 0,0).
+            const Ml = (p) => ({ x: (offX - x) + p.x * scale, y: (offY - y) + p.y * scale });
+            // Panel
+            cc.fillStyle = 'rgba(10, 12, 22, 0.78)';
+            cc.strokeStyle = 'rgba(0, 234, 255, 0.45)';
+            cc.lineWidth = 1;
+            roundedRect(cc, 0.5, 0.5, w - 1, h - 1, 8);
+            cc.fill();
+            cc.stroke();
+            // Track outline (centerline)
+            cc.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            cc.lineWidth = Math.max(2, geom.halfRoadWidth * scale * 1.8);
+            cc.lineCap = 'round';
+            cc.lineJoin = 'round';
+            cc.beginPath();
+            for (let i = 0; i < geom.waypoints.length; i++) {
+                const p = Ml(geom.waypoints[i]);
+                if (i === 0) cc.moveTo(p.x, p.y); else cc.lineTo(p.x, p.y);
+            }
+            cc.closePath();
+            cc.stroke();
+            // Center hairline (dashed) over the same path
+            cc.strokeStyle = 'rgba(255, 212, 0, 0.6)';
+            cc.lineWidth = 1;
+            cc.setLineDash([3, 4]);
+            cc.stroke();
+            cc.setLineDash([]);
+            // Start dot
+            const s = Ml(geom.start);
+            cc.fillStyle = '#ffffff';
+            cc.beginPath();
+            cc.arc(s.x, s.y, 3, 0, Math.PI * 2);
+            cc.fill();
+            cache = this._minimapCache = { key, canvas: cnv };
         }
-        ctx.closePath();
-        ctx.stroke();
-        // Center hairline
-        ctx.strokeStyle = 'rgba(255, 212, 0, 0.6)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
 
-        // Start dot
-        const s = M(geom.start);
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.save();
+        ctx.drawImage(cache.canvas, x, y, w, h);
 
-        // Cars
+        // ---- Cars (the only moving part) ----
         if (cars) {
             for (const car of cars) {
                 const p = M(car);
