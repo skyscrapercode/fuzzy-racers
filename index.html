@@ -255,6 +255,7 @@
             canvas.style.height = H + 'px';
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             buildTrack();
+            buildGradients();
         }
         window.addEventListener('resize', resize);
 
@@ -335,15 +336,23 @@
             ctx.restore();
         }
 
-        // ---------- Vignette (drawn last; focuses the centre) ----------
-        function drawVignette() {
-            const g = ctx.createRadialGradient(
+        // ---------- Cached static gradients (rebuilt on resize, not per frame) ----------
+        let _bgGrad = null, _vignetteGrad = null;
+        function buildGradients() {
+            _bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.5, Math.max(W, H));
+            _bgGrad.addColorStop(0, '#0b0f1f');
+            _bgGrad.addColorStop(1, '#04050a');
+            _vignetteGrad = ctx.createRadialGradient(
                 W * 0.5, H * 0.5, Math.min(W, H) * 0.28,
                 W * 0.5, H * 0.5, Math.max(W, H) * 0.72
             );
-            g.addColorStop(0, 'rgba(2, 3, 8, 0)');
-            g.addColorStop(1, 'rgba(2, 3, 8, 0.55)');
-            ctx.fillStyle = g;
+            _vignetteGrad.addColorStop(0, 'rgba(2, 3, 8, 0)');
+            _vignetteGrad.addColorStop(1, 'rgba(2, 3, 8, 0.55)');
+        }
+
+        // ---------- Vignette (drawn last; focuses the centre) ----------
+        function drawVignette() {
+            ctx.fillStyle = _vignetteGrad;
             ctx.fillRect(0, 0, W, H);
         }
 
@@ -522,8 +531,10 @@
 
         // ---------- Title text ----------
         let titlePulse = 0;
-        function drawTitle() {
-            if (!reduceMotion) titlePulse += 0.04;
+        function drawTitle(dt) {
+            // Time-based so the pulse/sweep run at the same speed regardless of
+            // the (now throttled) frame rate. 2.4 = the old 0.04 per 60fps frame.
+            if (!reduceMotion) titlePulse += (dt || 0.016) * 2.4;
             const pulse = 0.5 + 0.5 * Math.sin(titlePulse);
             const hq = settings.quality === 'high';
 
@@ -606,31 +617,35 @@
         let last = performance.now();
         let _rafId = 0;
         let _cancelled = false;
+        // Cap the decorative menu to ~30fps: the animation is slow/ambient so it
+        // looks the same, but it halves the per-second draw work.
+        const MENU_FRAME_MS = 1000 / 30 - 2;   // small slack so we don't miss the window
         window.addEventListener('pagehide', () => {
             _cancelled = true;
             if (_rafId) cancelAnimationFrame(_rafId);
         });
         function frame(now) {
             if (_cancelled) return;
+            _rafId = requestAnimationFrame(frame);        // always keep the loop alive
+            if (now - last < MENU_FRAME_MS) return;       // throttle to ~30fps
             const dt = Math.min((now - last) / 1000, 0.05);
             last = now;
+
+            // Nothing to draw while a modal covers the menu (its backdrop is
+            // near-opaque + blurred), so skip the whole scene until it closes.
+            if (document.querySelector('.modal.open')) return;
+
             dashOffset += dt * 80;
 
-            // Background gradient fill
-            const bg = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.5, Math.max(W, H));
-            bg.addColorStop(0, '#0b0f1f');
-            bg.addColorStop(1, '#04050a');
-            ctx.fillStyle = bg;
+            ctx.fillStyle = _bgGrad;                       // cached (rebuilt on resize)
             ctx.fillRect(0, 0, W, H);
 
             drawGrid(dt);
             drawTrack();
             drawCars(dt);
             drawParticles(dt);
-            drawTitle();
+            drawTitle(dt);
             drawVignette();
-
-            _rafId = requestAnimationFrame(frame);
         }
 
         resize();
