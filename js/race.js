@@ -266,7 +266,7 @@ const Race = {
         this._insp.ruleTag = el.querySelector('#fiRuleTag');
         this._insp.rulesEl = el.querySelector('#fiRules');
 
-        const makeCard = (host, name) => {
+        const makeCard = (host, name, withCog) => {
             const card = document.createElement('div');
             card.className = 'fi-chart-card';
             card.innerHTML = `
@@ -275,11 +275,13 @@ const Race = {
                     <span class="fi-chart-val"></span>
                 </div>
                 <canvas></canvas>
+                ${withCog ? '<div class="fi-cog"></div>' : ''}
                 <div class="fi-leg"></div>`;
             host.appendChild(card);
             return {
                 canvas: card.querySelector('canvas'),
                 valEl:  card.querySelector('.fi-chart-val'),
+                cogEl:  card.querySelector('.fi-cog'),
                 legEl:  card.querySelector('.fi-leg')
             };
         };
@@ -288,13 +290,13 @@ const Race = {
         for (const v in schema.inputs) {
             this._insp.inputs[v] = Object.assign(
                 { setNames: schema.inputs[v].sets, range: schema.inputs[v].range },
-                makeCard(inHost, v));
+                makeCard(inHost, v, false));
         }
         const outHost = el.querySelector('#fiOutputCharts');
         for (const v in schema.outputs) {
             this._insp.outputs[v] = Object.assign(
                 { setNames: schema.outputs[v].sets, range: schema.outputs[v].range },
-                makeCard(outHost, v));
+                makeCard(outHost, v, true));
         }
     },
 
@@ -376,9 +378,19 @@ const Race = {
         // ---- Output charts (defuzzification) ----
         for (const v in insp.outputs) {
             const c     = insp.outputs[v];
-            const crisp = dbg.outputs[v];
             const acts  = dbg.activations[v] || {};
+            // Centre-of-gravity, computed live so the formula shows its terms:
+            //   crisp = Σ(x·μ) / Σμ = num / den
+            const cog   = insp.viz.defuzzifyDetailed(v, acts);
+            const crisp = cog.crisp;
             c.valEl.innerHTML = this._fiFmt(crisp);
+            if (c.cogEl) {
+                c.cogEl.innerHTML = cog.fallback
+                    ? `<span class="fi-cog-f">COG = &Sigma;(x&middot;&mu;) / &Sigma;&mu;</span>` +
+                      `<span class="fi-cog-n">no rule fired &rarr; midpoint = <b>${crisp.toFixed(1)}</b></span>`
+                    : `<span class="fi-cog-f">COG = &Sigma;(x&middot;&mu;) / &Sigma;&mu;</span>` +
+                      `<span class="fi-cog-n">= ${cog.num.toFixed(1)} / ${cog.den.toFixed(2)} = <b>${crisp.toFixed(1)}</b></span>`;
+            }
             this._drawOutputChart(c.canvas, insp.viz._outputs[v], c.setNames, c.range, acts, crisp);
             c.legEl.innerHTML = c.setNames.map((s, i) => {
                 const a = acts[s] || 0;

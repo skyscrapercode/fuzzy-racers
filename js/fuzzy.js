@@ -576,6 +576,19 @@ class FuzzyEngine {
      * the output is well-defined.
      */
     defuzzify(varName, activations) {
+        return this.defuzzifyDetailed(varName, activations).crisp;
+    }
+
+    /**
+     * Same centroid computation as defuzzify(), but returns the running terms
+     * of the centre-of-gravity formula so the UI can show the calculation live:
+     *
+     *   crisp = Σ(x · μ(x))  /  Σ(μ(x))   =   num / den
+     *
+     * Returns { crisp, num, den, min, max, steps, fallback }. When no rule
+     * fired (den === 0) crisp falls back to the range midpoint (fallback: true).
+     */
+    defuzzifyDetailed(varName, activations) {
         const out = this._outputs[varName];
         const [min, max] = out.range;
         const STEPS = 100;
@@ -594,8 +607,9 @@ class FuzzyEngine {
             den += mu;
         }
 
-        if (den === 0) return (min + max) / 2;
-        return num / den;
+        const fallback = den === 0;
+        const crisp = fallback ? (min + max) / 2 : num / den;
+        return { crisp, num, den, min, max, steps: STEPS + 1, fallback };
     }
 
     /**
