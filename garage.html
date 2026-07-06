@@ -566,6 +566,14 @@
             selectedId = id;
             const car = getCarById(id);
 
+            // Adopt the car's default livery (paint + accent) so the chosen car
+            // looks the same in the garage, race, and results. Skipped once the
+            // player has deliberately picked a paint/accent swatch.
+            if (car && !customization.customLivery) {
+                customization.paint = car.paint;
+                customization.accent = car.accent;
+            }
+
             for (const [cid, refs] of cardCanvases) {
                 const isSel = cid === id;
                 refs.card.classList.toggle('selected', isSel);
@@ -788,6 +796,7 @@
             s.style.color = color;
             s.addEventListener('click', () => {
                 customization.paint = color;
+                customization.customLivery = true;   // stop auto-adopting the car's colours
                 paintSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
                 refreshAll();
             });
@@ -804,6 +813,7 @@
             s.style.color = color;
             s.addEventListener('click', () => {
                 customization.accent = color;
+                customization.customLivery = true;   // stop auto-adopting the car's colours
                 accentSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
                 refreshAll();
             });
@@ -1054,11 +1064,12 @@
                 ctx.save();
                 ctx.translate(w / 2, h / 2);
                 ctx.scale(scale, scale);
-                // Red accent override to distinguish opponents from player
+                // Opponents get a red accent to distinguish them from the player,
+                // except the Tophaz show car, which keeps its true gold livery.
                 drawCarTopDown(ctx, {
                     shape: car.shape,
                     paint: car.paint,
-                    accent: '#ff3355',
+                    accent: car.shape === 'formula' ? car.accent : '#ff3355',
                     pattern: 'stripes',
                     glow: true
                 });

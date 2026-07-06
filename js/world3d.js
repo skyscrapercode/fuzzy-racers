@@ -168,6 +168,11 @@ const World3D = {
             this.scene.add(mesh);
         }
 
+        // Frame the chase cam relative to the player car's length, so a longer
+        // car (the formula Tophaz, L=88) isn't uncomfortably close. Never pulls
+        // in tighter than the baseline for the shorter arcade cars.
+        this._camDistScale = Math.max(1, this._carDims(player).L / 66);
+
         // ---- Post-processing (neon bloom) ----
         this._initPostFX();
     },
@@ -468,7 +473,9 @@ const World3D = {
         compact: { L: 54, W: 29, H: 14, nose: 0.55, tail: 0.55 },
         truck:   { L: 73, W: 38, H: 17, nose: 0.55, tail: 0.40 },
         wedge:   { L: 69, W: 28, H: 12, nose: 0.30, tail: 0.70 },
-        coupe:   { L: 66, W: 30, H: 13, nose: 0.50, tail: 0.60 }
+        coupe:   { L: 66, W: 30, H: 13, nose: 0.50, tail: 0.60 },
+        // Tophaz: long, low, narrow open-wheel formula car (bespoke 3D model).
+        formula: { L: 88, W: 20, H: 8,  nose: 0.30, tail: 0.40 }
     },
 
     /** Resolve the chassis shape + body-kit into final body dimensions. */
@@ -529,6 +536,12 @@ const World3D = {
         const accent  = cust.accent  || (carData && carData.accent) || '#ffffff';
         const pattern = cust.pattern || 'stripes';
         const dims = this._carDims(car);
+
+        // Tophaz: bespoke open-wheel formula model instead of the extruded tub.
+        if (dims.shape === 'formula') {
+            return this._buildFormulaCar(car, paint, accent, dims);
+        }
+
         const hl = dims.L / 2, hw = dims.W / 2;
         const baseY = 4;                 // body sits this high; wheels peek below
         // The extruded body has a ~1.5-unit bevel on top, so its real top
@@ -646,6 +659,196 @@ const World3D = {
         group.userData = {
             car, body, bodyMat, cockpit,
             originalPaint: new THREE.Color(paint),
+            shield, boostFlame, nitroFlame, stunRing
+        };
+        return group;
+    },
+
+    /** Bespoke 3D model of the Tophaz formula car: pointed nose + tapered tub,
+     *  front + rear wings, halo, helmet, four open wheels, and a CO2 canister.
+     *  paint = teal body, accent = pale-gold aero parts. Returns a Group with
+     *  the same userData contract as _buildCarMesh (body/bodyMat + FX children)
+     *  so the render sync, explosion recolour, and powerup FX all still work. */
+    _buildFormulaCar(car, paint, accent, dims) {
+        const group = new THREE.Group();
+        const hl = dims.L / 2;                        // 44
+        const baseY = 4;                              // tub bottom
+        const R = 7;                                  // wheel radius
+
+        // Convert to linear so the sRGB output encode round-trips back to the
+        // exact garage swatch colour (otherwise the teal reads as pale cyan).
+        const paintLin  = new THREE.Color(paint).convertSRGBToLinear();
+        const accentLin = new THREE.Color(accent).convertSRGBToLinear();
+
+        const bodyMat = new THREE.MeshLambertMaterial({
+            color: paintLin.clone(), emissive: paintLin.clone(), emissiveIntensity: 0.08
+        });
+        const goldMat = new THREE.MeshLambertMaterial({
+            color: accentLin.clone(), emissive: accentLin.clone(), emissiveIntensity: 0.12
+        });
+        const darkMat = new THREE.MeshLambertMaterial({ color: 0x12141c });
+        const tyreMat = new THREE.MeshLambertMaterial({ color: 0x0a0c14 });  // black tyres, like the other cars
+        const hubMat  = new THREE.MeshLambertMaterial({ color: 0x20242e });
+
+        // ---- Contact shadow (hugs the wheel track, not oversized) ----
+        const shadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(dims.L * 1.0, dims.W * 2.1),
+            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })
+        );
+        shadow.rotation.x = -Math.PI / 2;
+        shadow.position.y = 0.15;
+        group.add(shadow);
+
+        // ---- Body tub: extrude an F1 top-down plan (x = forward, y = lateral) ----
+        const s = new THREE.Shape();
+        s.moveTo(hl, 0);
+        s.quadraticCurveTo(34, -3, 18, -4);
+        s.lineTo(4, -9); s.lineTo(-6, -9);
+        s.lineTo(-26, -5); s.lineTo(-40, -3.5);
+        s.lineTo(-40, 3.5); s.lineTo(-26, 5);
+        s.lineTo(-6, 9); s.lineTo(4, 9);
+        s.quadraticCurveTo(34, 3, hl, 0);
+        s.closePath();
+        const tubGeom = new THREE.ExtrudeGeometry(s, {
+            depth: dims.H, bevelEnabled: true, bevelThickness: 1, bevelSize: 1, bevelSegments: 1, steps: 1
+        });
+        tubGeom.rotateX(-Math.PI / 2);
+        const body = new THREE.Mesh(tubGeom, bodyMat);
+        body.position.y = baseY;
+        group.add(body);
+        const tubTop = baseY + dims.H + 1.5;
+
+        // Gold nose stripe along the top of the nose
+        const noseStripe = new THREE.Mesh(new THREE.BoxGeometry(30, 0.6, 3), goldMat);
+        noseStripe.position.set(24, tubTop + 0.2, 0);
+        group.add(noseStripe);
+
+        // ---- Front wing (low, at the nose) + endplates ----
+        const fWing = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 44), goldMat);
+        fWing.position.set(38, baseY - 0.5, 0);
+        group.add(fWing);
+        for (const z of [-22, 22]) {
+            const ep = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 1.6), goldMat);
+            ep.position.set(39, baseY + 1.5, z);
+            group.add(ep);
+        }
+
+        // ---- Rear wing (raised) on posts + endplates ----
+        const rWing = new THREE.Mesh(new THREE.BoxGeometry(7, 1.8, 34), goldMat);
+        rWing.position.set(-40, tubTop + 8, 0);
+        group.add(rWing);
+        for (const z of [-17, 17]) {
+            const ep = new THREE.Mesh(new THREE.BoxGeometry(9, 9, 1.8), goldMat);
+            ep.position.set(-40, tubTop + 5.5, z);
+            group.add(ep);
+        }
+        for (const z of [-5, 5]) {
+            const post = new THREE.Mesh(new THREE.BoxGeometry(3, 9, 2.5), darkMat);
+            post.position.set(-38, tubTop + 4, z);
+            group.add(post);
+        }
+
+        // ---- Cockpit opening + helmet ----
+        const cockpit = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 2, 16), darkMat);
+        cockpit.position.set(2, tubTop + 0.4, 0);
+        group.add(cockpit);
+        const helmet = new THREE.Mesh(new THREE.SphereGeometry(3.4, 16, 12),
+            new THREE.MeshLambertMaterial({ color: 0x123039 }));
+        helmet.position.set(1, tubTop + 3, 0);
+        group.add(helmet);
+
+        // ---- Halo: an arch spanning the cockpit + front strut ----
+        const halo = new THREE.Mesh(
+            new THREE.TorusGeometry(7, 1.1, 8, 20, Math.PI),
+            goldMat
+        );
+        halo.rotation.y = Math.PI / 2;          // arch spans Z, peaks in +Y
+        halo.position.set(2, tubTop + 1.5, 0);
+        group.add(halo);
+        const haloStrut = new THREE.Mesh(new THREE.BoxGeometry(7, 1.4, 1.4), goldMat);
+        haloStrut.position.set(9, tubTop + 4, 0);
+        group.add(haloStrut);
+
+        // ---- Straight axle tying each wheel to the tub ----
+        // Cylinder spanning two arbitrary points.
+        const armMat = new THREE.MeshLambertMaterial({
+            color: paintLin.clone(), emissive: paintLin.clone(), emissiveIntensity: 0.08
+        });
+        const yAxis = new THREE.Vector3(0, 1, 0);
+        const makeArm = (p1, p2, r) => {
+            const start = new THREE.Vector3(p1[0], p1[1], p1[2]);
+            const end   = new THREE.Vector3(p2[0], p2[1], p2[2]);
+            const dir   = new THREE.Vector3().subVectors(end, start);
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(r, r, dir.length(), 8), armMat);
+            arm.position.copy(start).add(end).multiplyScalar(0.5);
+            arm.quaternion.setFromUnitVectors(yAxis, dir.clone().normalize());
+            group.add(arm);
+        };
+
+        // ---- Four open wheels (white tyre + dark hub) ----
+        const tyreGeom = new THREE.CylinderGeometry(R, R, 6, 20);
+        const hubGeom  = new THREE.CylinderGeometry(2.6, 2.6, 6.4, 12);
+        for (const [x, z] of [[22, 14], [22, -14], [-24, 15], [-24, -15]]) {
+            const sgn = z < 0 ? -1 : 1;
+            const chassisZ = sgn * 4;           // tub side
+            const jointZ   = z - sgn * 3;       // inner face of the tyre
+            // Single straight axle from the tub out to the hub.
+            makeArm([x, R, chassisZ], [x, R, jointZ], 0.9);
+
+            const tyre = new THREE.Mesh(tyreGeom, tyreMat);
+            tyre.rotation.x = Math.PI / 2;      // axis along Z
+            tyre.position.set(x, R, z);
+            group.add(tyre);
+            const hub = new THREE.Mesh(hubGeom, hubMat);
+            hub.rotation.x = Math.PI / 2;
+            hub.position.set(x, R, z);
+            group.add(hub);
+        }
+
+        // ---- CO2 canister poking out the tail (body colour) ----
+        const canister = new THREE.Mesh(
+            new THREE.CylinderGeometry(3.6, 3.6, 12, 14),
+            bodyMat
+        );
+        canister.rotation.z = Math.PI / 2;      // axis along X
+        canister.position.set(-46, baseY + 8, 0);
+        group.add(canister);
+        const canCap = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 2, 14),
+            new THREE.MeshLambertMaterial({ color: 0x2a2e38 }));
+        canCap.rotation.z = Math.PI / 2;        // flat disc capping the canister end
+        canCap.position.set(-53, baseY + 8, 0);
+        group.add(canCap);
+
+        // ---- Hidden FX children (shield / boost / nitro / stun), like every car ----
+        const reach = dims.L;
+        const topY = tubTop + 8;
+        const shield = new THREE.Mesh(
+            new THREE.SphereGeometry(reach * 0.5, 24, 16),
+            new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })
+        );
+        shield.position.set(0, topY * 0.55, 0); shield.visible = false; group.add(shield);
+
+        const boostFlame = new THREE.Mesh(
+            new THREE.ConeGeometry(7, 28, 12),
+            new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.85 }));
+        boostFlame.rotation.z = Math.PI / 2;
+        boostFlame.position.set(-hl - 20, baseY + 3, 0); boostFlame.visible = false; group.add(boostFlame);
+
+        const nitroFlame = new THREE.Mesh(
+            new THREE.ConeGeometry(8, 38, 12),
+            new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.9 }));
+        nitroFlame.rotation.z = Math.PI / 2;
+        nitroFlame.position.set(-hl - 26, baseY + 3, 0); nitroFlame.visible = false; group.add(nitroFlame);
+
+        const stunRing = new THREE.Mesh(
+            new THREE.TorusGeometry(reach * 0.4, 1.4, 6, 32),
+            new THREE.MeshBasicMaterial({ color: 0xa479ff, transparent: true, opacity: 0.7 }));
+        stunRing.rotation.x = Math.PI / 2;
+        stunRing.position.y = topY; stunRing.visible = false; group.add(stunRing);
+
+        group.userData = {
+            car, body, bodyMat, cockpit,
+            originalPaint: paintLin.clone(),
             shield, boostFlame, nitroFlame, stunRing
         };
         return group;
@@ -947,8 +1150,9 @@ const World3D = {
         const sinA = Math.sin(p.angle);
         // Distance back grows a bit with speed → arcade feel
         const spd = Math.min(1, p.speed / Math.max(1, p.maxSpeed));
-        const camDist   = 95 + spd * 30;
-        const camHeight = 50 + spd * 10;
+        const camScale  = this._camDistScale || 1;
+        const camDist   = (95 + spd * 30) * camScale;
+        const camHeight = (50 + spd * 10) * camScale;
         const tx = p.x - cosA * camDist;
         const tz = p.y - sinA * camDist;
         // Smoothly approach camera target

@@ -97,10 +97,14 @@ const Race = {
         this.ai = new Car({
             id: opponentData.id,
             baseStats: opponentData.stats,
-            // AI gets a stock loadout in opponent-roster colors
+            // AI gets a stock loadout in opponent-roster colors. Opponents use a
+            // red accent to stand out, except the Tophaz show car, which keeps
+            // its true gold livery.
             customization: {
                 engine: 'stock', tires: 'standard', bodyKit: 'stock',
-                paint: opponentData.paint, accent: '#ff3355', pattern: 'stripes'
+                paint: opponentData.paint,
+                accent: opponentData.shape === 'formula' ? opponentData.accent : '#ff3355',
+                pattern: 'stripes'
             },
             x: aSlot.x, y: aSlot.y, angle: aSlot.angle,
             isPlayer: false

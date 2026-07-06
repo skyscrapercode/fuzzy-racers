@@ -440,7 +440,10 @@
                     pctx.rotate(-Math.PI / 2); // face up
                     const cust = (b.isPlayer && result.customization) ? result.customization : {
                         engine: 'stock', tires: 'standard', bodyKit: 'stock',
-                        paint: b.car.paint, accent: '#ff3355', pattern: 'stripes'
+                        paint: b.car.paint,
+                        // Opponents get a red accent, except the Tophaz show car.
+                        accent: b.car.shape === 'formula' ? b.car.accent : '#ff3355',
+                        pattern: 'stripes'
                     };
                     drawCarTopDown(pctx, {
                         shape: b.car.shape,
