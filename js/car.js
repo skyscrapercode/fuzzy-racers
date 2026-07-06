@@ -412,7 +412,7 @@ function drawCarTopDown(ctx, opts) {
  */
 function drawFormulaTopDown(ctx, paint, accent, glow) {
     const wheelDark = '#0a0c14';
-    const wheelRim  = '#e4e8f0';   // white-ish rims, like the render
+    const wheelRim  = '#20242e';   // black tyres with a subtle hub, like the other cars
     const outline   = 'rgba(0,0,0,0.5)';
     ctx.save();
 

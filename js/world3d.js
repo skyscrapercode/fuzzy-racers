@@ -687,7 +687,7 @@ const World3D = {
             color: accentLin.clone(), emissive: accentLin.clone(), emissiveIntensity: 0.12
         });
         const darkMat = new THREE.MeshLambertMaterial({ color: 0x12141c });
-        const tyreMat = new THREE.MeshLambertMaterial({ color: 0xe8ecf2 });  // white 3D-printed wheels
+        const tyreMat = new THREE.MeshLambertMaterial({ color: 0x0a0c14 });  // black tyres, like the other cars
         const hubMat  = new THREE.MeshLambertMaterial({ color: 0x20242e });
 
         // ---- Contact shadow (hugs the wheel track, not oversized) ----
@@ -805,18 +805,18 @@ const World3D = {
             group.add(hub);
         }
 
-        // ---- CO2 canister poking out the tail ----
+        // ---- CO2 canister poking out the tail (body colour) ----
         const canister = new THREE.Mesh(
-            new THREE.CylinderGeometry(3.6, 3.6, 16, 14),
-            new THREE.MeshLambertMaterial({ color: 0x3a3f4a })
+            new THREE.CylinderGeometry(3.6, 3.6, 12, 14),
+            bodyMat
         );
         canister.rotation.z = Math.PI / 2;      // axis along X
-        canister.position.set(-48, baseY + 3.5, 0);
+        canister.position.set(-46, baseY + 3.5, 0);
         group.add(canister);
         const canCap = new THREE.Mesh(new THREE.ConeGeometry(3.6, 4, 14),
             new THREE.MeshLambertMaterial({ color: 0x2a2e38 }));
-        canCap.rotation.z = -Math.PI / 2;
-        canCap.position.set(-57, baseY + 3.5, 0);
+        canCap.rotation.z = Math.PI / 2;        // base flush to the canister end, tapering to a point at the tail
+        canCap.position.set(-54, baseY + 3.5, 0);
         group.add(canCap);
 
         // ---- Hidden FX children (shield / boost / nitro / stun), like every car ----
