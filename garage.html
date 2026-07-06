@@ -1064,11 +1064,12 @@
                 ctx.save();
                 ctx.translate(w / 2, h / 2);
                 ctx.scale(scale, scale);
-                // Red accent override to distinguish opponents from player
+                // Opponents get a red accent to distinguish them from the player,
+                // except the Tophaz show car, which keeps its true gold livery.
                 drawCarTopDown(ctx, {
                     shape: car.shape,
                     paint: car.paint,
-                    accent: '#ff3355',
+                    accent: car.shape === 'formula' ? car.accent : '#ff3355',
                     pattern: 'stripes',
                     glow: true
                 });
