@@ -494,11 +494,12 @@ function drawFormulaTopDown(ctx, paint, accent, glow) {
     ctx.fillStyle = '#9096a2'; ctx.strokeStyle = outline; ctx.lineWidth = 1;
     roundedRect(ctx, -56, -3, 8, 6, 2); ctx.fill(); ctx.stroke();
 
-    // Team number
+    // Team number "39 A" (stacked along the nose, like the livery)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 9px Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('39', -16, 0);
+    ctx.font = 'bold 9px Arial';
+    ctx.fillText('39', -15, 0);
+    ctx.fillText('A', -23, 0);
 
     ctx.restore();
 }
