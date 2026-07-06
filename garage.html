@@ -566,6 +566,14 @@
             selectedId = id;
             const car = getCarById(id);
 
+            // Adopt the car's default livery (paint + accent) so the chosen car
+            // looks the same in the garage, race, and results. Skipped once the
+            // player has deliberately picked a paint/accent swatch.
+            if (car && !customization.customLivery) {
+                customization.paint = car.paint;
+                customization.accent = car.accent;
+            }
+
             for (const [cid, refs] of cardCanvases) {
                 const isSel = cid === id;
                 refs.card.classList.toggle('selected', isSel);
@@ -788,6 +796,7 @@
             s.style.color = color;
             s.addEventListener('click', () => {
                 customization.paint = color;
+                customization.customLivery = true;   // stop auto-adopting the car's colours
                 paintSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
                 refreshAll();
             });
@@ -804,6 +813,7 @@
             s.style.color = color;
             s.addEventListener('click', () => {
                 customization.accent = color;
+                customization.customLivery = true;   // stop auto-adopting the car's colours
                 accentSwatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('selected', x.dataset.color === color));
                 refreshAll();
             });
