@@ -811,12 +811,12 @@ const World3D = {
             bodyMat
         );
         canister.rotation.z = Math.PI / 2;      // axis along X
-        canister.position.set(-46, baseY + 3.5, 0);
+        canister.position.set(-46, baseY + 8, 0);
         group.add(canister);
-        const canCap = new THREE.Mesh(new THREE.ConeGeometry(3.6, 4, 14),
+        const canCap = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 2, 14),
             new THREE.MeshLambertMaterial({ color: 0x2a2e38 }));
-        canCap.rotation.z = Math.PI / 2;        // base flush to the canister end, tapering to a point at the tail
-        canCap.position.set(-54, baseY + 3.5, 0);
+        canCap.rotation.z = Math.PI / 2;        // flat disc capping the canister end
+        canCap.position.set(-53, baseY + 8, 0);
         group.add(canCap);
 
         // ---- Hidden FX children (shield / boost / nitro / stun), like every car ----
