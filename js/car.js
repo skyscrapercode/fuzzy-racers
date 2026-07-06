@@ -15,13 +15,16 @@
 
 const CarRoster = [
     {
+        // Tophaz (T39): the team's STEM Racing car, recreated from its
+        // engineering drawings as a special maxed-stats showcase car. Keeps the
+        // 'street_rocket' id so previously-saved selections still resolve.
         id: 'street_rocket',
-        name: 'Street Rocket',
-        tagline: 'Balanced all-rounder',
-        stats: { speed: 6, handling: 6, accel: 6, armor: 6 },
-        paint: '#00eaff',
-        accent: '#ffffff',
-        shape: 'sedan'
+        name: 'Tophaz',
+        tagline: 'STEM Racing show car: all stats maxed',
+        stats: { speed: 10, handling: 10, accel: 10, armor: 10 },
+        paint: '#14b39a',    // metallic teal-green body
+        accent: '#e9dd9e',   // pale gold wings / halo / trim
+        shape: 'formula'
     },
     {
         id: 'thunder_beast',
@@ -217,6 +220,12 @@ function drawCarTopDown(ctx, opts) {
     const bodyKit = o.bodyKit || 'stock';
     const glow = o.glow !== false;
 
+    // Formula car (Tophaz) has a bespoke open-wheel silhouette, drawn separately.
+    if (shape === 'formula') {
+        drawFormulaTopDown(ctx, paint, accent, glow);
+        return;
+    }
+
     // Dimensions per shape (length × width in local units)
     const baseDims = {
         sedan:   { L: 84, W: 40, nose: 0.55, tail: 0.55 },
@@ -391,6 +400,96 @@ function drawCarTopDown(ctx, opts) {
         drawCarSilhouette(ctx, dims);
         ctx.fill();
     }
+
+    ctx.restore();
+}
+
+/**
+ * Top-down silhouette of the Tophaz formula car: pointed nose, open wheels,
+ * front + rear wings, halo over the cockpit, and a CO2 canister at the tail.
+ * paint = teal body, accent = pale-gold aero parts. Drawn +x = forward.
+ */
+function drawFormulaTopDown(ctx, paint, accent, glow) {
+    const wheelDark = '#0a0c14';
+    const wheelRim  = '#e4e8f0';   // white-ish rims, like the render
+    const outline   = 'rgba(0,0,0,0.5)';
+    ctx.save();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(-2, 5, 54, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rear wing (gold blade + endplates), behind everything
+    ctx.fillStyle = accent; ctx.strokeStyle = outline; ctx.lineWidth = 1;
+    roundedRect(ctx, -50, -18, 8, 36, 2); ctx.fill(); ctx.stroke();
+    roundedRect(ctx, -52, -19, 12, 4, 1); ctx.fill();
+    roundedRect(ctx, -52,  15, 12, 4, 1); ctx.fill();
+
+    // Open wheels (dark tyre + light rim)
+    const wheel = (cx, cz) => {
+        ctx.fillStyle = wheelDark;
+        roundedRect(ctx, cx - 9, cz - 4, 18, 8, 2); ctx.fill();
+        ctx.fillStyle = wheelRim;
+        ctx.fillRect(cx - 6, cz - 1.5, 12, 3);
+    };
+    wheel(26, -17); wheel(26, 17);     // front
+    wheel(-24, -18); wheel(-24, 18);   // rear (slightly wider track)
+
+    // Body (teal): pointed nose → sidepods → tapered engine cover
+    if (glow) { ctx.shadowColor = paint; ctx.shadowBlur = 12; }
+    ctx.fillStyle = paint;
+    ctx.beginPath();
+    ctx.moveTo(52, 0);
+    ctx.quadraticCurveTo(40, -5, 22, -6);
+    ctx.lineTo(6, -11);
+    ctx.lineTo(-6, -11);
+    ctx.lineTo(-30, -6);
+    ctx.lineTo(-46, -4);
+    ctx.lineTo(-46, 4);
+    ctx.lineTo(-30, 6);
+    ctx.lineTo(6, 11);
+    ctx.lineTo(22, 6);
+    ctx.quadraticCurveTo(40, 5, 52, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Gold nose stripe
+    ctx.fillStyle = accent; ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(50, 0); ctx.lineTo(26, -2.5); ctx.lineTo(26, 2.5); ctx.closePath();
+    ctx.fill(); ctx.globalAlpha = 1;
+
+    // Front wing (gold blade + endplates) at the nose
+    ctx.fillStyle = accent; ctx.strokeStyle = outline; ctx.lineWidth = 1;
+    roundedRect(ctx, 40, -22, 8, 44, 2); ctx.fill(); ctx.stroke();
+    roundedRect(ctx, 42, -24, 10, 4, 1); ctx.fill();
+    roundedRect(ctx, 42,  20, 10, 4, 1); ctx.fill();
+    // Nose tip over the wing centre
+    ctx.fillStyle = paint;
+    ctx.beginPath(); ctx.moveTo(52, 0); ctx.lineTo(40, -4); ctx.lineTo(40, 4); ctx.closePath(); ctx.fill();
+
+    // Cockpit + helmet + halo
+    ctx.fillStyle = 'rgba(8,10,22,0.9)';
+    ctx.beginPath(); ctx.ellipse(2, 0, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#123039';
+    ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = accent; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(2, 0, 9.5, 8, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(11.5, 0); ctx.lineTo(17, 0); ctx.stroke();   // front halo prong
+
+    // CO2 canister nub at the tail
+    ctx.fillStyle = '#9096a2'; ctx.strokeStyle = outline; ctx.lineWidth = 1;
+    roundedRect(ctx, -56, -3, 8, 6, 2); ctx.fill(); ctx.stroke();
+
+    // Team number
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('39', -16, 0);
 
     ctx.restore();
 }
