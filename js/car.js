@@ -103,6 +103,7 @@ const BodyKits = [
 ];
 
 const PaintPresets = [
+    '#14b39a', '#e9dd9e',   // Tophaz primary (teal) + secondary (gold)
     '#00eaff', '#ff2bd6', '#ffd400', '#39ff7a', '#ff3355',
     '#a479ff', '#ffffff', '#ff8800', '#1f90ff', '#9aa3c7'
 ];
@@ -415,17 +416,25 @@ function drawFormulaTopDown(ctx, paint, accent, glow) {
     const outline   = 'rgba(0,0,0,0.5)';
     ctx.save();
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.ellipse(-2, 5, 54, 22, 0, 0, Math.PI * 2);
-    ctx.fill();
-
     // Rear wing (gold blade + endplates), behind everything
     ctx.fillStyle = accent; ctx.strokeStyle = outline; ctx.lineWidth = 1;
     roundedRect(ctx, -50, -18, 8, 36, 2); ctx.fill(); ctx.stroke();
     roundedRect(ctx, -52, -19, 12, 4, 1); ctx.fill();
     roundedRect(ctx, -52,  15, 12, 4, 1); ctx.fill();
+
+    // Straight axle line tying each wheel to the tub.
+    // Drawn before the wheels so the outer end is tucked under the tyre,
+    // and before the body so the inner end is tucked under the chassis.
+    ctx.strokeStyle = paint; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    const suspension = (cx, cz) => {
+        const sgn = cz < 0 ? -1 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, sgn * 5);            // chassis side
+        ctx.lineTo(cx, cz - sgn * 3);       // inner face of the tyre
+        ctx.stroke();
+    };
+    suspension(26, -17); suspension(26, 17);     // front
+    suspension(-24, -18); suspension(-24, 18);   // rear
 
     // Open wheels (dark tyre + light rim)
     const wheel = (cx, cz) => {

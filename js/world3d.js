@@ -675,20 +675,25 @@ const World3D = {
         const baseY = 4;                              // tub bottom
         const R = 7;                                  // wheel radius
 
+        // Convert to linear so the sRGB output encode round-trips back to the
+        // exact garage swatch colour (otherwise the teal reads as pale cyan).
+        const paintLin  = new THREE.Color(paint).convertSRGBToLinear();
+        const accentLin = new THREE.Color(accent).convertSRGBToLinear();
+
         const bodyMat = new THREE.MeshLambertMaterial({
-            color: new THREE.Color(paint), emissive: new THREE.Color(paint), emissiveIntensity: 0.08
+            color: paintLin.clone(), emissive: paintLin.clone(), emissiveIntensity: 0.08
         });
         const goldMat = new THREE.MeshLambertMaterial({
-            color: new THREE.Color(accent), emissive: new THREE.Color(accent), emissiveIntensity: 0.12
+            color: accentLin.clone(), emissive: accentLin.clone(), emissiveIntensity: 0.12
         });
         const darkMat = new THREE.MeshLambertMaterial({ color: 0x12141c });
         const tyreMat = new THREE.MeshLambertMaterial({ color: 0xe8ecf2 });  // white 3D-printed wheels
         const hubMat  = new THREE.MeshLambertMaterial({ color: 0x20242e });
 
-        // ---- Contact shadow ----
+        // ---- Contact shadow (hugs the wheel track, not oversized) ----
         const shadow = new THREE.Mesh(
-            new THREE.PlaneGeometry(dims.L * 1.1, dims.W * 3.2),
-            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false })
+            new THREE.PlaneGeometry(dims.L * 1.0, dims.W * 2.1),
+            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })
         );
         shadow.rotation.x = -Math.PI / 2;
         shadow.position.y = 0.15;
@@ -764,10 +769,32 @@ const World3D = {
         haloStrut.position.set(9, tubTop + 4, 0);
         group.add(haloStrut);
 
+        // ---- Straight axle tying each wheel to the tub ----
+        // Cylinder spanning two arbitrary points.
+        const armMat = new THREE.MeshLambertMaterial({
+            color: paintLin.clone(), emissive: paintLin.clone(), emissiveIntensity: 0.08
+        });
+        const yAxis = new THREE.Vector3(0, 1, 0);
+        const makeArm = (p1, p2, r) => {
+            const start = new THREE.Vector3(p1[0], p1[1], p1[2]);
+            const end   = new THREE.Vector3(p2[0], p2[1], p2[2]);
+            const dir   = new THREE.Vector3().subVectors(end, start);
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(r, r, dir.length(), 8), armMat);
+            arm.position.copy(start).add(end).multiplyScalar(0.5);
+            arm.quaternion.setFromUnitVectors(yAxis, dir.clone().normalize());
+            group.add(arm);
+        };
+
         // ---- Four open wheels (white tyre + dark hub) ----
         const tyreGeom = new THREE.CylinderGeometry(R, R, 6, 20);
         const hubGeom  = new THREE.CylinderGeometry(2.6, 2.6, 6.4, 12);
         for (const [x, z] of [[22, 14], [22, -14], [-24, 15], [-24, -15]]) {
+            const sgn = z < 0 ? -1 : 1;
+            const chassisZ = sgn * 4;           // tub side
+            const jointZ   = z - sgn * 3;       // inner face of the tyre
+            // Single straight axle from the tub out to the hub.
+            makeArm([x, R, chassisZ], [x, R, jointZ], 0.9);
+
             const tyre = new THREE.Mesh(tyreGeom, tyreMat);
             tyre.rotation.x = Math.PI / 2;      // axis along Z
             tyre.position.set(x, R, z);
@@ -821,7 +848,7 @@ const World3D = {
 
         group.userData = {
             car, body, bodyMat, cockpit,
-            originalPaint: new THREE.Color(paint),
+            originalPaint: paintLin.clone(),
             shield, boostFlame, nitroFlame, stunRing
         };
         return group;
